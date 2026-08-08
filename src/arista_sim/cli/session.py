@@ -5,7 +5,7 @@ import shlex
 from enum import Enum
 
 from ..models.device import DeviceState
-from ..renderers import running_config, show_switchport, show_vlan
+from ..renderers import running_config, show_interfaces_trunk, show_switchport, show_vlan
 from .command_tree import CommandTree, argument, literal
 from .errors import CliError
 
@@ -111,6 +111,7 @@ class Session:
         add(Mode.PRIVILEGED, [literal("logout", "Exit from the EXEC")], self._close)
         add(Mode.PRIVILEGED, [literal("show", "Show running system information"), literal("vlan", "VLAN status")], self._show_vlan)
         add(Mode.PRIVILEGED, [literal("show"), literal("running-config", "Current operating configuration")], self._show_running)
+        add(Mode.PRIVILEGED, [literal("show"), literal("interfaces", "Interface status and configuration"), literal("trunk", "Trunk interface status")], self._show_interfaces_trunk)
         for iface_parts in (
             [argument("interface", "Ethernet interface", parse_interface)],
             [literal("ethernet", "Ethernet interface"), argument("interface", "Interface number", parse_interface_number)],
@@ -283,6 +284,9 @@ class Session:
 
     def _show_switchport(self, values: dict) -> str:
         return show_switchport(self.device.interfaces[str(values["interface"])])
+
+    def _show_interfaces_trunk(self, _: dict) -> str:
+        return show_interfaces_trunk(self.device)
 
     def _save(self, _: dict) -> str:
         self.device.save_startup()

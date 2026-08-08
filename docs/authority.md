@@ -15,8 +15,12 @@ The official EOS 4.36.1F CLI manual confirms:
 - Case-insensitive keywords and truncated keywords only when the abbreviation is unique. The manual's own example rejects `con` as ambiguous and accepts `conf` as `configure`.
 - `?` lists commands at the current level, filters keywords from a partial token, and lists the next keywords or arguments.
 - `show running-config`, and separate running/startup configurations saved with `write` or `copy running-config startup-config`.
+- `show interfaces [INTERFACE] trunk` displays configuration and status for trunk interfaces.
+- `show mac address-table` is the EOS command for displaying learned and configured MAC table entries.
 
 Primary behavior source: [Arista EOS 4.36.1F Command-Line Interface](https://www.arista.com/en/um-eos/eos-command-line-interface-cli).
+
+Switching command sources: [Virtual LANs](https://www.arista.com/en/um-eos/eos-virtual-lans-vlans) and [Data Transfer](https://www.arista.com/en/um-eos/eos-data-transfer).
 
 ## Network Foundations priorities
 
@@ -41,4 +45,3 @@ Official curriculum sources:
 The supplied Network Foundations PDF contains the complete three-page V2.0 course outline. The supplied file named `EOS-User-Manual.pdf` contains only a one-page browser print of the online manual outline (`1 of 5,387`), not the 5,387 pages of manual content. Behavioral verification therefore uses the official live EOS manual linked above.
 
 As of August 8, 2026, Arista describes Network Foundations as the Associate accreditation. Legacy Level 1 maps to Network Foundations Associate; the older Level 1-5 exams reached end-of-life on December 31, 2025.
-

@@ -101,6 +101,20 @@ class CliTests(unittest.TestCase):
         output = self.session.execute("show interfaces et48 switchport")
         self.assertIn("Trunking VLANs Enabled: 5,10-12", output)
 
+    def test_show_interfaces_trunk_summarizes_only_trunk_ports(self):
+        self.enter_config()
+        self.session.execute("interface et48")
+        self.session.execute("switchport mode trunk")
+        self.session.execute("switchport trunk allowed vlan 5,10-12")
+        self.session.execute("end")
+
+        output = self.session.execute("show interfaces trunk")
+        self.assertIn("Port            Mode", output)
+        self.assertIn("Et48            trunk", output)
+        self.assertIn("trunking", output)
+        self.assertIn("Et48            5,10-12", output)
+        self.assertNotIn("Et1 ", output)
+
     def test_command_execution_records_history(self):
         self.session.execute("enable")
         self.session.execute("show vlan")

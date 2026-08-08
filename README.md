@@ -33,10 +33,11 @@ SW1(config-if-Et1)# no shutdown
 SW1(config-if-Et1)# end
 SW1# show vlan
 SW1# show interfaces ethernet 1 switchport
+SW1# show interfaces trunk
 SW1# show running-config
 ```
 
-Use `?` at any point to discover the commands or arguments valid there. The Windows console displays help immediately without adding `?` to the command. Up/Down arrows recall command history. Unique abbreviations such as `conf` and `int et1` work; ambiguous abbreviations fail.
+Use `?` at any point to discover the commands or arguments valid there. The Windows console displays help immediately without adding `?` to the command. Up/Down arrows recall command history on Windows, macOS, and Linux. Unique abbreviations such as `conf` and `int et1` work; ambiguous abbreviations fail.
 
 ## Test it
 
