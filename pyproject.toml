@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arista-foundations-sim"
+version = "0.1.0"
+description = "Local EOS-style CLI training simulator for Arista Network Foundations"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+arista-sim = "arista_sim.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
