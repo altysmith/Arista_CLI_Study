@@ -34,6 +34,16 @@ SW1# show running-config
 
 Use `?` at any point to discover the commands or arguments valid there. The Windows console displays help immediately without adding `?` to the command. Up/Down arrows recall command history. Unique abbreviations such as `conf` and `int et1` work; ambiguous abbreviations fail.
 
+The Layer 2 learning pack also supports trunk allowed/native VLAN configuration and these state-derived verification commands:
+
+```text
+show vlan [VLAN_ID]
+show interfaces status
+show interfaces trunk
+show interfaces [INTERFACE] switchport
+show interfaces [INTERFACE] vlans
+```
+
 ## Test it
 
 ```powershell

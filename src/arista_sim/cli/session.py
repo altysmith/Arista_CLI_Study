@@ -5,7 +5,14 @@ import shlex
 from enum import Enum
 
 from ..models.device import DeviceState
-from ..renderers import running_config, show_switchport, show_vlan
+from ..renderers import (
+    running_config,
+    show_interfaces_status,
+    show_interfaces_trunk,
+    show_interfaces_vlans,
+    show_switchport,
+    show_vlan,
+)
 from .command_tree import CommandTree, argument, literal
 from .errors import CliError
 
@@ -102,6 +109,19 @@ class Session:
         add(Mode.EXEC, [literal("logout", "Exit from the EXEC")], self._close)
         # connect intentionally makes `con` ambiguous in privileged EXEC, matching EOS docs.
         add(Mode.EXEC, [literal("connect", "Open a terminal connection")], self._not_implemented)
+        add(Mode.EXEC, [literal("show", "Show running system information"), literal("vlan", "VLAN status")], self._show_vlan)
+        add(Mode.EXEC, [literal("show"), literal("vlan"), argument("vlan", "VLAN ID (1-4094)", parse_vlan)], self._show_vlan)
+        add(Mode.EXEC, [literal("show"), literal("interfaces", "Interface status and configuration"), literal("status", "Interface status")], self._show_interfaces_status)
+        add(Mode.EXEC, [literal("show"), literal("interfaces"), literal("trunk", "Trunk status")], self._show_interfaces_trunk)
+        add(Mode.EXEC, [literal("show"), literal("interfaces"), literal("vlans", "VLANs carried by interfaces")], self._show_interfaces_vlans)
+        for iface_parts in (
+            [argument("interface", "Ethernet interface", parse_interface)],
+            [literal("ethernet", "Ethernet interface"), argument("interface", "Interface number", parse_interface_number)],
+        ):
+            add(Mode.EXEC, [literal("show"), literal("interfaces"), *iface_parts, literal("switchport", "Switchport information")], self._show_switchport)
+            add(Mode.EXEC, [literal("show"), literal("interfaces"), *iface_parts, literal("status", "Interface status")], self._show_interfaces_status)
+            add(Mode.EXEC, [literal("show"), literal("interfaces"), *iface_parts, literal("trunk", "Trunk status")], self._show_interfaces_trunk)
+            add(Mode.EXEC, [literal("show"), literal("interfaces"), *iface_parts, literal("vlans", "VLANs carried")], self._show_interfaces_vlans)
 
         add(Mode.PRIVILEGED, [literal("disable", "Turn off privileged commands")], self._disable)
         add(Mode.PRIVILEGED, [literal("configure", "Enter configuration mode")], self._configure)
@@ -110,17 +130,25 @@ class Session:
         add(Mode.PRIVILEGED, [literal("exit", "Exit from the EXEC")], self._close)
         add(Mode.PRIVILEGED, [literal("logout", "Exit from the EXEC")], self._close)
         add(Mode.PRIVILEGED, [literal("show", "Show running system information"), literal("vlan", "VLAN status")], self._show_vlan)
+        add(Mode.PRIVILEGED, [literal("show"), literal("vlan"), argument("vlan", "VLAN ID (1-4094)", parse_vlan)], self._show_vlan)
         add(Mode.PRIVILEGED, [literal("show"), literal("running-config", "Current operating configuration")], self._show_running)
+        add(Mode.PRIVILEGED, [literal("show"), literal("interfaces", "Interface status and configuration"), literal("status", "Interface status")], self._show_interfaces_status)
+        add(Mode.PRIVILEGED, [literal("show"), literal("interfaces"), literal("trunk", "Trunk status")], self._show_interfaces_trunk)
+        add(Mode.PRIVILEGED, [literal("show"), literal("interfaces"), literal("vlans", "VLANs carried by interfaces")], self._show_interfaces_vlans)
         for iface_parts in (
             [argument("interface", "Ethernet interface", parse_interface)],
             [literal("ethernet", "Ethernet interface"), argument("interface", "Interface number", parse_interface_number)],
         ):
             add(Mode.PRIVILEGED, [literal("show"), literal("interfaces", "Interface status and configuration"), *iface_parts, literal("switchport", "Switchport information")], self._show_switchport)
+            add(Mode.PRIVILEGED, [literal("show"), literal("interfaces"), *iface_parts, literal("status", "Interface status")], self._show_interfaces_status)
+            add(Mode.PRIVILEGED, [literal("show"), literal("interfaces"), *iface_parts, literal("trunk", "Trunk status")], self._show_interfaces_trunk)
+            add(Mode.PRIVILEGED, [literal("show"), literal("interfaces"), *iface_parts, literal("vlans", "VLANs carried")], self._show_interfaces_vlans)
         add(Mode.PRIVILEGED, [literal("copy", "Copy a configuration file"), literal("running-config", "Current configuration"), literal("startup-config", "Startup configuration")], self._save)
         add(Mode.PRIVILEGED, [literal("write", "Write running configuration")], self._save)
 
         add(Mode.CONFIG, [literal("hostname", "Set system hostname"), argument("hostname", "System hostname", parse_word)], self._hostname)
         add(Mode.CONFIG, [literal("vlan", "VLAN configuration"), argument("vlan", "VLAN ID (1-4094)", parse_vlan)], self._vlan)
+        add(Mode.CONFIG, [literal("no", "Negate a command"), literal("vlan", "Remove VLAN"), argument("vlan", "VLAN ID (2-4094)", parse_vlan)], self._no_vlan)
         for iface_parts in (
             [argument("interface", "Interface name (for example Et1)", parse_interface)],
             [literal("ethernet", "Ethernet interface"), argument("interface", "Interface number", parse_interface_number)],
@@ -128,12 +156,16 @@ class Session:
             add(Mode.CONFIG, [literal("interface", "Select an interface"), *iface_parts], self._interface)
 
         add(Mode.VLAN, [literal("name", "Set VLAN name"), argument("name", "VLAN name", parse_word, greedy=True)], self._vlan_name)
+        add(Mode.VLAN, [literal("no", "Negate a command"), literal("name", "Remove VLAN name")], self._no_vlan_name)
         add(Mode.INTERFACE, [literal("description", "Interface description"), argument("description", "Description text", parse_word, greedy=True)], self._description)
+        add(Mode.INTERFACE, [literal("no", "Negate a command"), literal("description", "Remove interface description")], self._no_description)
         add(Mode.INTERFACE, [literal("shutdown", "Administratively disable interface")], self._shutdown)
         add(Mode.INTERFACE, [literal("no", "Negate a command"), literal("shutdown", "Administratively enable interface")], self._no_shutdown)
         add(Mode.INTERFACE, [literal("switchport", "Switchport configuration"), literal("mode", "Set switching mode"), literal("access", "Access mode")], self._access_mode)
         add(Mode.INTERFACE, [literal("switchport"), literal("mode"), literal("trunk", "Trunk mode")], self._trunk_mode)
+        add(Mode.INTERFACE, [literal("no"), literal("switchport"), literal("mode", "Restore access mode")], self._default_switchport_mode)
         add(Mode.INTERFACE, [literal("switchport"), literal("access", "Access parameters"), literal("vlan", "Set access VLAN"), argument("vlan", "VLAN ID (1-4094)", parse_vlan)], self._access_vlan)
+        add(Mode.INTERFACE, [literal("no"), literal("switchport"), literal("access"), literal("vlan", "Restore VLAN 1")], self._default_access_vlan)
         trunk_allowed = [
             literal("switchport"),
             literal("trunk", "Trunk parameters"),
@@ -141,12 +173,19 @@ class Session:
             literal("vlan", "Set allowed VLANs"),
         ]
         add(Mode.INTERFACE, [*trunk_allowed, literal("all", "All VLANs")], self._trunk_all)
+        add(Mode.INTERFACE, [*trunk_allowed, literal("none", "No VLANs")], self._trunk_none)
+        add(Mode.INTERFACE, [*trunk_allowed, literal("add", "Add VLANs"), argument("vlans", "VLAN list", parse_vlan_list)], self._trunk_add)
+        add(Mode.INTERFACE, [*trunk_allowed, literal("remove", "Remove VLANs"), argument("vlans", "VLAN list", parse_vlan_list)], self._trunk_remove)
+        add(Mode.INTERFACE, [*trunk_allowed, literal("except", "All except VLANs"), argument("vlans", "VLAN list", parse_vlan_list)], self._trunk_except)
         add(Mode.INTERFACE, [*trunk_allowed, argument("vlans", "VLAN list (for example 5,10-12)", parse_vlan_list)], self._trunk_allowed)
         add(
             Mode.INTERFACE,
             [literal("no", "Negate a command"), *trunk_allowed],
             self._trunk_all,
         )
+        trunk_native = [literal("switchport"), literal("trunk"), literal("native", "Native VLAN"), literal("vlan", "Set native VLAN")]
+        add(Mode.INTERFACE, [*trunk_native, argument("vlan", "VLAN ID (1-4094)", parse_vlan)], self._trunk_native)
+        add(Mode.INTERFACE, [literal("no"), *trunk_native], self._default_trunk_native)
 
         for mode in (Mode.CONFIG, Mode.VLAN, Mode.INTERFACE):
             add(mode, [literal("end", "Exit to Privileged EXEC")], self._end)
@@ -226,6 +265,17 @@ class Session:
         self.device.ensure_vlan(int(self.context)).name = str(values["name"])
         return ""
 
+    def _no_vlan(self, values: dict) -> str:
+        vlan_id = int(values["vlan"])
+        if vlan_id == 1:
+            return "% VLAN 1 cannot be removed"
+        self.device.vlans.pop(vlan_id, None)
+        return ""
+
+    def _no_vlan_name(self, _: dict) -> str:
+        self.device.ensure_vlan(int(self.context)).name = ""
+        return ""
+
     def _interface(self, values: dict) -> str:
         name = str(values["interface"])
         self.mode, self.context = Mode.INTERFACE, name
@@ -233,6 +283,10 @@ class Session:
 
     def _description(self, values: dict) -> str:
         self.device.interfaces[str(self.context)].description = str(values["description"])
+        return ""
+
+    def _no_description(self, _: dict) -> str:
+        self.device.interfaces[str(self.context)].description = ""
         return ""
 
     def _shutdown(self, _: dict) -> str:
@@ -251,8 +305,32 @@ class Session:
         self.device.interfaces[str(self.context)].switchport_mode = "trunk"
         return ""
 
+    def _default_switchport_mode(self, _: dict) -> str:
+        self.device.interfaces[str(self.context)].switchport_mode = "access"
+        return ""
+
     def _trunk_all(self, _: dict) -> str:
         self.device.interfaces[str(self.context)].allowed_vlans = None
+        return ""
+
+    def _trunk_none(self, _: dict) -> str:
+        self.device.interfaces[str(self.context)].allowed_vlans = set()
+        return ""
+
+    def _trunk_add(self, values: dict) -> str:
+        interface = self.device.interfaces[str(self.context)]
+        if interface.allowed_vlans is not None:
+            interface.allowed_vlans.update(values["vlans"])
+        return ""
+
+    def _trunk_remove(self, values: dict) -> str:
+        interface = self.device.interfaces[str(self.context)]
+        current = set(range(1, 4095)) if interface.allowed_vlans is None else set(interface.allowed_vlans)
+        interface.allowed_vlans = current - set(values["vlans"])
+        return ""
+
+    def _trunk_except(self, values: dict) -> str:
+        self.device.interfaces[str(self.context)].allowed_vlans = set(range(1, 4095)) - set(values["vlans"])
         return ""
 
     def _trunk_allowed(self, values: dict) -> str:
@@ -262,6 +340,18 @@ class Session:
     def _access_vlan(self, values: dict) -> str:
         vlan_id = int(values["vlan"])
         self.device.interfaces[str(self.context)].access_vlan = vlan_id
+        return ""
+
+    def _default_access_vlan(self, _: dict) -> str:
+        self.device.interfaces[str(self.context)].access_vlan = 1
+        return ""
+
+    def _trunk_native(self, values: dict) -> str:
+        self.device.interfaces[str(self.context)].native_vlan = int(values["vlan"])
+        return ""
+
+    def _default_trunk_native(self, _: dict) -> str:
+        self.device.interfaces[str(self.context)].native_vlan = 1
         return ""
 
     def _end(self, _: dict) -> str:
@@ -276,13 +366,28 @@ class Session:
         return ""
 
     def _show_vlan(self, _: dict) -> str:
-        return show_vlan(self.device)
+        vlan_id = _.get("vlan")
+        if vlan_id is not None and int(vlan_id) not in self.device.vlans:
+            return f"% VLAN {vlan_id} not found"
+        return show_vlan(self.device, int(vlan_id) if vlan_id is not None else None)
 
     def _show_running(self, _: dict) -> str:
         return running_config(self.device)
 
     def _show_switchport(self, values: dict) -> str:
         return show_switchport(self.device.interfaces[str(values["interface"])])
+
+    def _show_interfaces_trunk(self, values: dict) -> str:
+        name = values.get("interface")
+        return show_interfaces_trunk(self.device, str(name) if name else None)
+
+    def _show_interfaces_status(self, values: dict) -> str:
+        name = values.get("interface")
+        return show_interfaces_status(self.device, str(name) if name else None)
+
+    def _show_interfaces_vlans(self, values: dict) -> str:
+        name = values.get("interface")
+        return show_interfaces_vlans(self.device, str(name) if name else None)
 
     def _save(self, _: dict) -> str:
         self.device.save_startup()

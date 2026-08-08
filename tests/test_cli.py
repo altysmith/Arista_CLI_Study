@@ -88,10 +88,16 @@ class CliTests(unittest.TestCase):
     def test_trunk_help_and_allowed_vlan_list(self):
         self.enter_config()
         self.session.execute("interface et48")
-        self.assertIn("allowed", self.session.execute("switchport trunk ?"))
+        trunk_help = self.session.execute("switchport trunk ?")
+        self.assertIn("allowed", trunk_help)
+        self.assertIn("native", trunk_help)
         self.assertIn("vlan", self.session.execute("switchport trunk allowed ?"))
         final_help = self.session.execute("switchport trunk allowed vlan ?")
         self.assertIn("all", final_help)
+        self.assertIn("none", final_help)
+        self.assertIn("add", final_help)
+        self.assertIn("remove", final_help)
+        self.assertIn("except", final_help)
         self.assertIn("<vlans>", final_help)
         self.assertEqual(self.session.execute("switchport mode trunk"), "")
         self.assertEqual(self.session.execute("switchport trunk allowed vlan 5,10-12"), "")
@@ -100,6 +106,98 @@ class CliTests(unittest.TestCase):
         self.session.execute("end")
         output = self.session.execute("show interfaces et48 switchport")
         self.assertIn("Trunking VLANs Enabled: 5,10-12", output)
+
+    def test_show_interfaces_trunk_and_native_vlan(self):
+        self.enter_config()
+        for command in (
+            "vlan 5",
+            "exit",
+            "vlan 10",
+            "exit",
+            "interface et48",
+            "switchport mode trunk",
+            "switchport trunk native vlan 5",
+            "switchport trunk allowed vlan 5,10-12",
+            "end",
+        ):
+            self.assertEqual(self.session.execute(command), "", command)
+        output = self.session.execute("show interfaces trunk")
+        self.assertIn("Et48", output)
+        self.assertIn("trunking", output)
+        self.assertIn("5,10-12", output)
+        self.assertIn("Vlans allowed and active", output)
+        self.assertIn("5,10", output)
+        filtered = self.session.execute("show int et48 trunk")
+        self.assertIn("Native vlan", filtered)
+        self.assertIn("Et48", filtered)
+
+    def test_layer2_verification_is_available_in_exec_mode(self):
+        self.assertIn("status", self.session.execute("show interfaces ?"))
+        self.assertIn("Port", self.session.execute("show interfaces status"))
+        self.assertEqual(self.session.execute("show interfaces trunk"), "No trunk interfaces configured")
+
+    def test_trunk_allowed_edit_actions_and_resets(self):
+        self.enter_config()
+        self.session.execute("interface et48")
+        self.session.execute("switchport trunk allowed vlan none")
+        self.session.execute("switchport trunk allowed vlan add 5,10-12")
+        self.session.execute("switchport trunk allowed vlan remove 11")
+        self.assertEqual(self.session.device.interfaces["Ethernet48"].allowed_vlans, {5, 10, 12})
+        self.session.execute("switchport trunk allowed vlan except 1-4093")
+        self.assertEqual(self.session.device.interfaces["Ethernet48"].allowed_vlans, {4094})
+        self.session.execute("no switchport trunk allowed vlan")
+        self.assertIsNone(self.session.device.interfaces["Ethernet48"].allowed_vlans)
+        self.session.execute("switchport trunk native vlan 20")
+        self.session.execute("no switchport trunk native vlan")
+        self.assertEqual(self.session.device.interfaces["Ethernet48"].native_vlan, 1)
+
+    def test_interface_status_and_vlan_membership_views(self):
+        self.enter_config()
+        self.session.execute("interface et1")
+        self.session.execute("description Student Port")
+        self.session.execute("switchport access vlan 20")
+        self.session.execute("shutdown")
+        self.session.execute("end")
+        status = self.session.execute("show interfaces et1 status")
+        self.assertIn("Student Port", status)
+        self.assertIn("disabled", status)
+        self.assertIn("20", status)
+        vlans = self.session.execute("show interfaces et1 vlans")
+        self.assertIn("Et1", vlans)
+        self.assertIn("20", vlans)
+
+    def test_no_forms_restore_defaults_and_remove_vlan(self):
+        self.enter_config()
+        self.session.execute("vlan 20")
+        self.session.execute("name STUDENTS")
+        self.session.execute("no name")
+        self.assertEqual(self.session.device.vlans[20].name, "")
+        self.session.execute("exit")
+        self.session.execute("interface et1")
+        self.session.execute("description Temporary")
+        self.session.execute("switchport access vlan 20")
+        self.session.execute("switchport mode trunk")
+        self.session.execute("no description")
+        self.session.execute("no switchport access vlan")
+        self.session.execute("no switchport mode")
+        interface = self.session.device.interfaces["Ethernet1"]
+        self.assertEqual(interface.description, "")
+        self.assertEqual(interface.access_vlan, 1)
+        self.assertEqual(interface.switchport_mode, "access")
+        self.session.execute("exit")
+        self.session.execute("no vlan 20")
+        self.assertNotIn(20, self.session.device.vlans)
+        self.assertEqual(self.session.execute("no vlan 1"), "% VLAN 1 cannot be removed")
+
+    def test_show_single_vlan_and_missing_vlan(self):
+        self.enter_config()
+        self.session.execute("vlan 20")
+        self.session.execute("name STUDENTS")
+        self.session.execute("end")
+        output = self.session.execute("show vlan 20")
+        self.assertIn("STUDENTS", output)
+        self.assertNotIn("default", output)
+        self.assertEqual(self.session.execute("show vlan 999"), "% VLAN 999 not found")
 
     def test_command_execution_records_history(self):
         self.session.execute("enable")

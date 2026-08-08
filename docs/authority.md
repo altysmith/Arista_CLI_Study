@@ -18,6 +18,8 @@ The official EOS 4.36.1F CLI manual confirms:
 
 Primary behavior source: [Arista EOS 4.36.1F Command-Line Interface](https://www.arista.com/en/um-eos/eos-command-line-interface-cli).
 
+Layer 2 command and output source: [Arista EOS 4.36.1F Virtual LANs](https://www.arista.com/en/um-eos/eos-virtual-lans-vlans), including trunk mode, allowed/native VLANs, reset forms, `show interfaces trunk`, and `show interfaces vlans`.
+
 ## Network Foundations priorities
 
 The supplied Network Foundations course datasheet prioritizes:
@@ -41,4 +43,3 @@ Official curriculum sources:
 The supplied Network Foundations PDF contains the complete three-page V2.0 course outline. The supplied file named `EOS-User-Manual.pdf` contains only a one-page browser print of the online manual outline (`1 of 5,387`), not the 5,387 pages of manual content. Behavioral verification therefore uses the official live EOS manual linked above.
 
 As of August 8, 2026, Arista describes Network Foundations as the Associate accreditation. Legacy Level 1 maps to Network Foundations Associate; the older Level 1-5 exams reached end-of-life on December 31, 2025.
-

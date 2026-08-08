@@ -18,6 +18,7 @@ class Interface:
     admin_up: bool = True
     switchport_mode: str = "access"
     access_vlan: int = 1
+    native_vlan: int = 1
     allowed_vlans: set[int] | None = None
 
 

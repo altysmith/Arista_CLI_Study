@@ -11,10 +11,11 @@ This file prevents simulated behavior from being mistaken for verified EOS behav
 | Tab completion | Partial | Unique completion and ambiguous choices work in the Windows console; cursor movement editing is not implemented |
 | Parent-mode command inheritance | Partial | Navigation is modeled; broad execution of every parent-mode command from child modes is not yet implemented |
 | Hostname | Supported | Prompt changes immediately |
-| VLAN create/name | Supported | Structured state and `show vlan` |
+| VLAN create/name/remove | Supported | Structured state, reset forms, and filtered/all `show vlan` |
 | Ethernet description/admin state | Supported | `shutdown` and `no shutdown` |
-| Access switchport | Supported | Mode and access VLAN |
-| Trunk switchport | Partial | Mode and allowed VLAN lists/ranges are stored; native VLAN and add/remove forms are not yet implemented |
+| Access switchport | Supported | Mode, access VLAN, and reset forms |
+| Trunk switchport | Supported | Mode, native VLAN, allowed VLAN lists/ranges, edit actions, and reset forms |
+| Layer 2 verification | Supported | `show interfaces status`, `trunk`, `switchport`, and `vlans` are state-derived |
 | Running configuration | Supported | Rendered from structured state |
 | Startup configuration | Supported | Save/copy snapshot only; reload is not implemented |
 | Interface operational state | Partial | No physical topology exists, so operational status is simulated as connected when admin-up |
