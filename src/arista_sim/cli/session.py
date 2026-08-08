@@ -50,12 +50,31 @@ def parse_interface_number(token: str) -> str:
     return parse_interface(f"Et{token}")
 
 
+def parse_vlan_list(token: str) -> set[int]:
+    vlans: set[int] = set()
+    for part in token.split(","):
+        if not part:
+            raise ValueError
+        if "-" in part:
+            bounds = part.split("-", 1)
+            if len(bounds) != 2:
+                raise ValueError
+            start, end = parse_vlan(bounds[0]), parse_vlan(bounds[1])
+            if start > end:
+                raise ValueError
+            vlans.update(range(start, end + 1))
+        else:
+            vlans.add(parse_vlan(part))
+    return vlans
+
+
 class Session:
     def __init__(self, device: DeviceState | None = None) -> None:
         self.device = device or DeviceState()
         self.mode = Mode.EXEC
         self.context: int | str | None = None
         self.closed = False
+        self.history: list[str] = []
         self._trees = self._build_trees()
 
     @property
@@ -115,6 +134,19 @@ class Session:
         add(Mode.INTERFACE, [literal("switchport", "Switchport configuration"), literal("mode", "Set switching mode"), literal("access", "Access mode")], self._access_mode)
         add(Mode.INTERFACE, [literal("switchport"), literal("mode"), literal("trunk", "Trunk mode")], self._trunk_mode)
         add(Mode.INTERFACE, [literal("switchport"), literal("access", "Access parameters"), literal("vlan", "Set access VLAN"), argument("vlan", "VLAN ID (1-4094)", parse_vlan)], self._access_vlan)
+        trunk_allowed = [
+            literal("switchport"),
+            literal("trunk", "Trunk parameters"),
+            literal("allowed", "Allowed VLANs"),
+            literal("vlan", "Set allowed VLANs"),
+        ]
+        add(Mode.INTERFACE, [*trunk_allowed, literal("all", "All VLANs")], self._trunk_all)
+        add(Mode.INTERFACE, [*trunk_allowed, argument("vlans", "VLAN list (for example 5,10-12)", parse_vlan_list)], self._trunk_allowed)
+        add(
+            Mode.INTERFACE,
+            [literal("no", "Negate a command"), *trunk_allowed],
+            self._trunk_all,
+        )
 
         for mode in (Mode.CONFIG, Mode.VLAN, Mode.INTERFACE):
             add(mode, [literal("end", "Exit to Privileged EXEC")], self._end)
@@ -125,6 +157,7 @@ class Session:
         line = line.strip()
         if not line:
             return ""
+        self.history.append(line)
         if "?" in line:
             return self.help(line)
         try:
@@ -216,6 +249,14 @@ class Session:
 
     def _trunk_mode(self, _: dict) -> str:
         self.device.interfaces[str(self.context)].switchport_mode = "trunk"
+        return ""
+
+    def _trunk_all(self, _: dict) -> str:
+        self.device.interfaces[str(self.context)].allowed_vlans = None
+        return ""
+
+    def _trunk_allowed(self, values: dict) -> str:
+        self.device.interfaces[str(self.context)].allowed_vlans = set(values["vlans"])
         return ""
 
     def _access_vlan(self, values: dict) -> str:

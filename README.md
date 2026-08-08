@@ -32,7 +32,7 @@ SW1# show interfaces ethernet 1 switchport
 SW1# show running-config
 ```
 
-Use `?` at any level. Unique abbreviations such as `conf` and `int et1` work; ambiguous abbreviations fail.
+Use `?` at any point to discover the commands or arguments valid there. The Windows console displays help immediately without adding `?` to the command. Up/Down arrows recall command history. Unique abbreviations such as `conf` and `int et1` work; ambiguous abbreviations fail.
 
 ## Test it
 
@@ -41,4 +41,3 @@ python -m unittest discover -s tests -v
 ```
 
 See [docs/architecture.md](docs/architecture.md), [docs/authority.md](docs/authority.md), and [docs/compatibility.md](docs/compatibility.md) for design, evidence, and accuracy limits.
-

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, TextIO
 
 if TYPE_CHECKING:
     from .cli.session import Session
@@ -15,14 +15,35 @@ def read_command(session: "Session") -> str:
 
     import msvcrt
 
+    return _read_windows_command(session, msvcrt.getwch, sys.stdout)
+
+
+def _read_windows_command(
+    session: "Session", getwch: Callable[[], str], output: TextIO
+) -> str:
     prompt = f"{session.prompt} "
     buffer = ""
-    sys.stdout.write(prompt)
-    sys.stdout.flush()
+    history_index = len(session.history)
+    draft = ""
+    output.write(prompt)
+    output.flush()
+
+    def redraw(replacement: str) -> str:
+        nonlocal buffer
+        old_length = len(buffer)
+        buffer = replacement
+        output.write("\r" + prompt + buffer)
+        if old_length > len(buffer):
+            output.write(" " * (old_length - len(buffer)))
+            output.write("\b" * (old_length - len(buffer)))
+        output.flush()
+        return buffer
+
     while True:
-        char = msvcrt.getwch()
+        char = getwch()
         if char in ("\r", "\n"):
-            print()
+            output.write("\n")
+            output.flush()
             return buffer
         if char == "\x03":
             raise KeyboardInterrupt
@@ -31,24 +52,37 @@ def read_command(session: "Session") -> str:
         if char == "\b":
             if buffer:
                 buffer = buffer[:-1]
-                sys.stdout.write("\b \b")
-                sys.stdout.flush()
+                output.write("\b \b")
+                output.flush()
+            continue
+        if char == "?":
+            help_output = session.help(buffer + "?")
+            output.write("?\n" + help_output + "\n" + prompt + buffer)
+            output.flush()
             continue
         if char == "\t":
             completed, matches = session.complete(buffer)
             if completed != buffer:
                 suffix = completed[len(buffer) :]
                 buffer = completed
-                sys.stdout.write(suffix)
+                output.write(suffix)
             elif len(matches) > 1:
-                sys.stdout.write("\n  " + "  ".join(matches) + "\n" + prompt + buffer)
-            sys.stdout.flush()
+                output.write("\n  " + "  ".join(matches) + "\n" + prompt + buffer)
+            output.flush()
             continue
         if char in ("\x00", "\xe0"):
-            msvcrt.getwch()  # Consume unsupported extended-key scan code.
+            scan_code = getwch()
+            if scan_code == "H" and session.history:
+                if history_index == len(session.history):
+                    draft = buffer
+                if history_index > 0:
+                    history_index -= 1
+                    redraw(session.history[history_index])
+            elif scan_code == "P" and history_index < len(session.history):
+                history_index += 1
+                redraw(draft if history_index == len(session.history) else session.history[history_index])
             continue
         if char.isprintable():
             buffer += char
-            sys.stdout.write(char)
-            sys.stdout.flush()
-
+            output.write(char)
+            output.flush()

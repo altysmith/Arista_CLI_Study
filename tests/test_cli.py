@@ -85,6 +85,27 @@ class CliTests(unittest.TestCase):
         self.assertEqual(self.session.execute("description Student access port"), "")
         self.assertEqual(self.session.device.interfaces["Ethernet1"].description, "Student access port")
 
+    def test_trunk_help_and_allowed_vlan_list(self):
+        self.enter_config()
+        self.session.execute("interface et48")
+        self.assertIn("allowed", self.session.execute("switchport trunk ?"))
+        self.assertIn("vlan", self.session.execute("switchport trunk allowed ?"))
+        final_help = self.session.execute("switchport trunk allowed vlan ?")
+        self.assertIn("all", final_help)
+        self.assertIn("<vlans>", final_help)
+        self.assertEqual(self.session.execute("switchport mode trunk"), "")
+        self.assertEqual(self.session.execute("switchport trunk allowed vlan 5,10-12"), "")
+        interface = self.session.device.interfaces["Ethernet48"]
+        self.assertEqual(interface.allowed_vlans, {5, 10, 11, 12})
+        self.session.execute("end")
+        output = self.session.execute("show interfaces et48 switchport")
+        self.assertIn("Trunking VLANs Enabled: 5,10-12", output)
+
+    def test_command_execution_records_history(self):
+        self.session.execute("enable")
+        self.session.execute("show vlan")
+        self.assertEqual(self.session.history, ["enable", "show vlan"])
+
     def test_invalid_and_incomplete_do_not_mutate(self):
         self.enter_config()
         self.assertEqual(self.session.execute("vlan"), "% Incomplete command")

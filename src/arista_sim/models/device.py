@@ -18,6 +18,7 @@ class Interface:
     admin_up: bool = True
     switchport_mode: str = "access"
     access_vlan: int = 1
+    allowed_vlans: set[int] | None = None
 
 
 @dataclass
@@ -45,4 +46,3 @@ class DeviceState:
             vlans=deepcopy(self.vlans),
             interfaces=deepcopy(self.interfaces),
         )
-

@@ -3,6 +3,20 @@ from __future__ import annotations
 from .models.device import DeviceState, Interface
 
 
+def _vlan_list(vlans: set[int]) -> str:
+    values = sorted(vlans)
+    ranges: list[str] = []
+    start = previous = values[0]
+    for value in values[1:]:
+        if value == previous + 1:
+            previous = value
+            continue
+        ranges.append(str(start) if start == previous else f"{start}-{previous}")
+        start = previous = value
+    ranges.append(str(start) if start == previous else f"{start}-{previous}")
+    return ",".join(ranges)
+
+
 def running_config(device: DeviceState) -> str:
     lines = ["!", f"hostname {device.hostname}", "!"]
     for vlan_id, vlan in sorted(device.vlans.items()):
@@ -26,6 +40,8 @@ def running_config(device: DeviceState) -> str:
         lines.append(f"   switchport mode {interface.switchport_mode}")
         if interface.switchport_mode == "access":
             lines.append(f"   switchport access vlan {interface.access_vlan}")
+        elif interface.allowed_vlans is not None:
+            lines.append(f"   switchport trunk allowed vlan {_vlan_list(interface.allowed_vlans)}")
         if not interface.admin_up:
             lines.append("   shutdown")
         lines.append("!")
@@ -58,6 +74,7 @@ def show_switchport(interface: Interface) -> str:
             f"Administrative Mode: {interface.switchport_mode}",
             f"Operational Mode: {operational}",
             f"Access Mode VLAN: {interface.access_vlan}",
+            "Trunking VLANs Enabled: "
+            + ("ALL" if interface.allowed_vlans is None else _vlan_list(interface.allowed_vlans)),
         ]
     )
-
