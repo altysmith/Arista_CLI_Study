@@ -78,3 +78,29 @@ def show_switchport(interface: Interface) -> str:
             + ("ALL" if interface.allowed_vlans is None else _vlan_list(interface.allowed_vlans)),
         ]
     )
+
+
+def show_interfaces_trunk(device: DeviceState) -> str:
+    trunks = [
+        interface
+        for interface in device.interfaces.values()
+        if interface.switchport_mode == "trunk"
+    ]
+    lines = [
+        "Port            Mode            Status          Native vlan",
+    ]
+    for interface in trunks:
+        port = interface.name.replace("Ethernet", "Et")
+        status = "trunking" if interface.admin_up else "not-trunking"
+        lines.append(f"{port:<15} {'trunk':<15} {status:<15} 1")
+
+    lines.extend(["", "Port            Vlans allowed"])
+    for interface in trunks:
+        port = interface.name.replace("Ethernet", "Et")
+        allowed = (
+            "1-4094"
+            if interface.allowed_vlans is None
+            else _vlan_list(interface.allowed_vlans)
+        )
+        lines.append(f"{port:<15} {allowed}")
+    return "\n".join(lines)

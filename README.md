@@ -4,13 +4,17 @@ A local, dependency-free training simulator that teaches EOS CLI discovery and c
 
 ## Run it
 
-Double-click `run_simulator.bat`, or run:
+On Windows, double-click `run_simulator.bat`.
 
-```powershell
+On macOS, double-click `run_simulator.command`. The first time you run it, macOS may ask you to confirm that you want to open it.
+
+You can also run the simulator from PowerShell or Terminal:
+
+```console
 python -m arista_sim
 ```
 
-If the package has not been installed, the batch file and the command above use the repository's `src` directory directly.
+If the package has not been installed, both launchers use the repository's `src` directory directly. The macOS launcher looks for Python 3.11 or newer in common Homebrew locations and in Codex's bundled runtime.
 
 Try this interaction:
 
@@ -29,10 +33,11 @@ SW1(config-if-Et1)# no shutdown
 SW1(config-if-Et1)# end
 SW1# show vlan
 SW1# show interfaces ethernet 1 switchport
+SW1# show interfaces trunk
 SW1# show running-config
 ```
 
-Use `?` at any point to discover the commands or arguments valid there. The Windows console displays help immediately without adding `?` to the command. Up/Down arrows recall command history. Unique abbreviations such as `conf` and `int et1` work; ambiguous abbreviations fail.
+Use `?` at any point to discover the commands or arguments valid there. The Windows console displays help immediately without adding `?` to the command. Up/Down arrows recall command history on Windows, macOS, and Linux. Unique abbreviations such as `conf` and `int et1` work; ambiguous abbreviations fail.
 
 ## Test it
 
