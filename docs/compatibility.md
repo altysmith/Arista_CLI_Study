@@ -4,7 +4,7 @@ This file prevents simulated behavior from being mistaken for verified EOS behav
 
 | Feature | Status | Notes |
 |---|---|---|
-| CLI mode prompts/navigation | Supported | EXEC, privileged EXEC, global, VLAN, and Ethernet interface modes |
+| CLI mode prompts/navigation | Supported | EXEC, privileged EXEC, global, VLAN, interface, RIP, ACL, MLAG, control-plane, management-SSH, class-map, and policy-map modes |
 | Unique command abbreviation | Supported | Token-level literals plus interface aliases |
 | Contextual `?` | Supported | Immediate current-level, partial-keyword, and next-token help in the Windows console |
 | Command history | Supported | Up/Down arrows recall commands entered in the current session |
@@ -20,7 +20,15 @@ This file prevents simulated behavior from being mistaken for verified EOS behav
 | Startup configuration | Supported | Save/copy snapshot only; reload is not implemented |
 | Interface operational state | Partial | No physical topology exists, so operational status is simulated as connected when admin-up |
 | Layer 2 forwarding/MAC learning | Not implemented | Planned after interface/VLAN command coverage |
-| STP, LACP, MLAG, VARP | Not implemented | Network Foundations priorities after base switching |
-| IPv4/IPv6, ARP, routing, OSPF | Not implemented | Future milestones |
-| ACL/security, QoS, CloudVision | Not implemented | Future curriculum scope |
+| LLDP | Partial | Command discovery and honest empty output; no peer topology exists yet |
+| STP | Partial | Configuration and state-derived local display; no multi-switch election or convergence engine |
+| LACP and MLAG | Partial | Stateful configuration and verification; no peer negotiation or MLAG forwarding engine |
+| IPv4 addressing and static routing | Supported | Management, routed Ethernet, SVI, loopback, subinterface, connected-route, and static-route practice |
+| ARP and MAC learning | Partial | Diagnostic commands are present but correctly report no learned entries without a topology engine |
+| RIP | Partial | Stateful network/redistribution configuration and verification; no neighbor exchange or route learning |
+| OSPFv2 | Partial | Stateful process/router-ID/network configuration and verification; no adjacency or route exchange |
+| IPv6 addressing and static routing | Supported | Interface addresses, global forwarding setting, static routes, and verification |
+| ACL/security | Partial | IPv4 ACL editing plus interface, control-plane, and SSH service attachment; no packet enforcement/counters |
+| QoS | Partial | Class-map, policy-map, marking/policer configuration and attachment; no ASIC queues or traffic effects |
+| CloudVision | Not implemented | Lab 17 is a graphical portal workflow and remains separate from the EOS CLI simulator |
 | Hardware/ASIC behavior | Not implemented | Explicitly out of initial scope |

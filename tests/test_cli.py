@@ -230,6 +230,187 @@ class CliTests(unittest.TestCase):
         self.session.execute("end")
         self.assertEqual(self.session.mode, Mode.PRIVILEGED)
 
+    def test_management_svi_and_static_routing_workflow(self):
+        self.enter_config()
+        commands = (
+            "interface management 1",
+            "ip address 192.0.2.2/24",
+            "exit",
+            "ip routing",
+            "interface vlan 10",
+            "ip address 10.0.10.1/24",
+            "exit",
+            "ip route 0.0.0.0/0 192.0.2.1",
+            "end",
+        )
+        for command in commands:
+            self.assertEqual(self.session.execute(command), "", command)
+        brief = self.session.execute("show ip interface brief")
+        self.assertIn("Ma1", brief)
+        self.assertIn("10.0.10.1/24", brief)
+        routes = self.session.execute("show ip route")
+        self.assertIn("10.0.10.0/24", routes)
+        self.assertIn("0.0.0.0/0 via 192.0.2.1", routes)
+
+    def test_router_on_a_stick_subinterface(self):
+        self.enter_config()
+        for command in (
+            "interface et1.20",
+            "encapsulation dot1q vlan 20",
+            "ip address 10.20.0.1/24",
+            "end",
+        ):
+            self.assertEqual(self.session.execute(command), "", command)
+        config = self.session.execute("show running-config")
+        self.assertIn("interface Ethernet1.20", config)
+        self.assertIn("encapsulation dot1q vlan 20", config)
+        self.assertIn("ip address 10.20.0.1/24", config)
+
+    def test_interface_range_lacp_and_mlag_workflow(self):
+        self.enter_config()
+        commands = (
+            "interface ethernet 1-2",
+            "channel-group 10 mode active",
+            "exit",
+            "interface port-channel 10",
+            "switchport mode trunk",
+            "mlag 10",
+            "exit",
+            "mlag configuration",
+            "domain-id LAB",
+            "local-interface vlan 4094",
+            "peer-address 10.0.0.2",
+            "peer-link port-channel 10",
+            "end",
+        )
+        for command in commands:
+            self.assertEqual(self.session.execute(command), "", command)
+        port_channel = self.session.execute("show port-channel dense")
+        self.assertIn("Po10(U)", port_channel)
+        self.assertIn("Et1(P+)", port_channel)
+        mlag = self.session.execute("show mlag")
+        self.assertIn("domain-id         : LAB", mlag)
+        self.assertIn("Configured (no peer topology)", mlag)
+
+    def test_spanning_tree_configuration_and_show(self):
+        self.enter_config()
+        self.session.execute("spanning-tree mode rapid-pvst")
+        self.session.execute("spanning-tree vlan 10 priority 24576")
+        self.session.execute("interface et1")
+        self.session.execute("spanning-tree portfast edge")
+        self.session.execute("spanning-tree port-priority 64")
+        self.session.execute("end")
+        output = self.session.execute("show spanning-tree")
+        self.assertIn("rapid-pvst", output)
+        config = self.session.execute("show running-config")
+        self.assertIn("spanning-tree vlan 10 priority 24576", config)
+        self.assertIn("spanning-tree portfast edge", config)
+
+    def test_rip_configuration_and_verification(self):
+        self.enter_config()
+        self.assertEqual(self.session.execute("router rip"), "")
+        self.assertEqual(self.session.prompt, "switch(config-router-rip)#")
+        self.session.execute("network 10.0.0.0/8")
+        self.session.execute("redistribute static")
+        self.session.execute("end")
+        protocols = self.session.execute("show ip protocols")
+        self.assertIn("Routing Protocol is 'rip'", protocols)
+        self.assertIn("10.0.0.0/8", protocols)
+
+    def test_ospf_configuration_and_verification(self):
+        self.enter_config()
+        for command in (
+            "router ospf 100",
+            "router-id 10.255.0.1",
+            "network 10.0.0.0/8 area 0",
+            "redistribute static",
+            "end",
+        ):
+            self.assertEqual(self.session.execute(command), "", command)
+        self.assertIn("OSPF Routing Process 100", self.session.execute("show ip ospf"))
+        self.assertIn("No OSPF neighbors", self.session.execute("show ip ospf neighbor"))
+        self.assertIn("10.0.0.0/8", self.session.execute("show ip ospf interface brief"))
+        config = self.session.execute("show running-config")
+        self.assertIn("router ospf 100", config)
+        self.assertIn("network 10.0.0.0/8 area 0.0.0.0", config)
+
+    def test_acl_interface_control_plane_and_service_workflow(self):
+        self.enter_config()
+        for command in (
+            "ip access-list MGMT",
+            "10 permit tcp 192.0.2.0/24 any eq ssh",
+            "20 deny ip any any",
+            "exit",
+            "interface et1",
+            "ip access-group MGMT in",
+            "exit",
+            "control-plane",
+            "ip access-group MGMT in",
+            "exit",
+            "management ssh",
+            "ip access-group MGMT in",
+            "end",
+        ):
+            self.assertEqual(self.session.execute(command), "", command)
+        output = self.session.execute("show ip access-lists MGMT")
+        self.assertIn("10 permit tcp", output)
+        self.assertIn("20 deny ip any any", output)
+        self.assertIn("MGMT", self.session.execute("show management ssh ip access-list"))
+
+    def test_qos_class_policy_and_interface_attachment(self):
+        self.enter_config()
+        commands = (
+            "ip access-list VOICE-ACL",
+            "10 permit udp any any",
+            "exit",
+            "class-map type qos match-any VOICE",
+            "match ip access-group VOICE-ACL",
+            "exit",
+            "policy-map type quality-of-service EDGE-QOS",
+            "class VOICE",
+            "set dscp 46",
+            "police cir 512000 bc 96000",
+            "exit",
+            "exit",
+            "interface et1",
+            "service-policy type qos input EDGE-QOS",
+            "end",
+        )
+        for command in commands:
+            self.assertEqual(self.session.execute(command), "", command)
+        output = self.session.execute("show policy-map")
+        self.assertIn("Service-policy EDGE-QOS", output)
+        self.assertIn("set dscp 46", output)
+        self.assertIn("police cir 512000 bc 96000", output)
+
+    def test_ipv6_addressing_and_static_route(self):
+        self.enter_config()
+        for command in (
+            "ipv6 unicast-routing",
+            "interface loopback 0",
+            "ipv6 address 2001:db8::1/128",
+            "exit",
+            "ipv6 route 2001:db8:1::/64 2001:db8::2",
+            "end",
+        ):
+            self.assertEqual(self.session.execute(command), "", command)
+        self.assertIn("2001:db8::1/128", self.session.execute("show ipv6 interface brief"))
+        self.assertIn("2001:db8:1::/64 via 2001:db8::2", self.session.execute("show ipv6 route"))
+
+    def test_topology_dependent_commands_do_not_fake_results(self):
+        self.assertIn("No LLDP neighbors", self.session.execute("show lldp neighbors"))
+        self.assertIn("No ARP entries", self.session.execute("show arp"))
+        self.assertIn("cannot be determined", self.session.execute("ping 192.0.2.1"))
+
+    def test_new_command_families_are_discoverable(self):
+        self.enter_config()
+        root_help = self.session.execute("?")
+        for keyword in ("class-map", "control-plane", "ip", "ipv6", "mlag", "policy-map", "router", "spanning-tree"):
+            self.assertIn(keyword, root_help)
+        self.session.execute("interface vlan 10")
+        self.assertIn("address", self.session.execute("ip ?"))
+        self.assertIn("address", self.session.execute("ipv6 ?"))
+
 
 if __name__ == "__main__":
     unittest.main()
