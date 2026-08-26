@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 
 from .cli.session import Session
 from .labs import get_lab, grade_lab, load_labs, public_lab
+from .reference import load_command_reference
 
 
 MAX_REQUEST_BYTES = 64 * 1024
@@ -71,6 +72,9 @@ class LabApplication:
     def labs(self) -> dict[str, Any]:
         return {"labs": [public_lab(lab) for lab in load_labs()]}
 
+    def command_reference(self) -> dict[str, Any]:
+        return load_command_reference()
+
     def create_session(self, payload: dict[str, Any]) -> dict[str, Any]:
         labs = load_labs()
         lab_id = str(payload.get("lab_id") or labs[0]["id"])
@@ -121,6 +125,9 @@ class LabRequestHandler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         if path == "/api/labs":
             self._send_json(self.app.labs())
+            return
+        if path == "/api/reference":
+            self._send_json(self.app.command_reference())
             return
         self._send_asset("index.html" if path == "/" else path.removeprefix("/"))
 

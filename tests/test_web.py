@@ -48,6 +48,7 @@ class WebTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn("text/html", content_type)
         self.assertIn(b"Arista CLI Lab", body)
+        self.assertIn(b"Command reference", body)
 
         status, _, body = self.request("/api/labs")
         catalog = json.loads(body)
@@ -56,6 +57,16 @@ class WebTests(unittest.TestCase):
         self.assertEqual(len(catalog["labs"]), 2)
         self.assertNotIn("checks", catalog["labs"][0])
         self.assertNotIn("setup_commands", catalog["labs"][1])
+
+        status, _, body = self.request("/api/reference")
+        reference = json.loads(body)
+        self.assertEqual(status, 200)
+        commands = [
+            item["command"]
+            for category in reference["categories"]
+            for item in category["commands"]
+        ]
+        self.assertIn("show interfaces trunk", commands)
 
     def test_terminal_api_preserves_prompts_and_state(self):
         session = self.create_session()

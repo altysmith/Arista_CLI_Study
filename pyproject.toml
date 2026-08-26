@@ -20,4 +20,4 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-arista_sim = ["labs/*.json", "web_assets/*"]
+arista_sim = ["labs/*.json", "reference/*.json", "web_assets/*"]
