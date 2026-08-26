@@ -39,6 +39,31 @@ SW1# show running-config
 
 Use `?` at any point to discover the commands or arguments valid there. The Windows console displays help immediately without adding `?` to the command. Up/Down arrows recall command history on Windows, macOS, and Linux. Unique abbreviations such as `conf` and `int et1` work; ambiguous abbreviations fail.
 
+The simulator now includes the command-first Network Foundations pack covering management addressing, VLANs and inter-VLAN routing, STP, LACP/MLAG, routed interfaces, static routes, RIP, OSPFv2, ACL/control-plane/service ACL workflows, foundational QoS, and IPv6 addressing. The exact Academy lab designs will be added only after their command requirements are confirmed.
+
+Examples of state-derived verification commands include:
+
+```text
+show vlan [VLAN_ID]
+show interfaces status
+show interfaces trunk
+show interfaces [INTERFACE] switchport
+show interfaces [INTERFACE] vlans
+show ip interface brief
+show ip route
+show lldp neighbors
+show spanning-tree
+show port-channel dense
+show mlag
+show ip protocols
+show ip access-lists
+show policy-map
+show ipv6 interface brief
+show ipv6 route
+```
+
+See [docs/network-foundations-command-coverage.md](docs/network-foundations-command-coverage.md) for the lab-by-lab command inventory, placeholders, and topology-dependent limits.
+
 ## Test it
 
 ```powershell

@@ -1,4 +1,4 @@
-# Architecture and Milestone 1 plan
+# Architecture and command-pack plan
 
 ## Boundaries
 
@@ -37,7 +37,7 @@ This lets future switching/routing engines depend on the same state without pars
 - A scripted acceptance transcript covers the complete Milestone 1 interaction.
 - Future features must pair configuration tests with verification commands and state-based lab validation.
 
-## Milestone 1 acceptance
+## Baseline acceptance
 
 - The reference transcript in the README succeeds.
 - `conf` and `int et1` resolve; `con` is ambiguous.

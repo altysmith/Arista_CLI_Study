@@ -8,7 +8,7 @@ from .terminal import read_command
 
 def main() -> None:
     session = Session()
-    print("Arista Network Foundations Simulator - Milestone 1")
+    print("Arista Network Foundations Simulator - Command Pack")
     print("Type ? for contextual help. Type exit to leave.")
     while not session.closed:
         try:

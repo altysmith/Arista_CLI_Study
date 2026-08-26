@@ -20,7 +20,9 @@ The official EOS 4.36.1F CLI manual confirms:
 
 Primary behavior source: [Arista EOS 4.36.1F Command-Line Interface](https://www.arista.com/en/um-eos/eos-command-line-interface-cli).
 
-Switching command sources: [Virtual LANs](https://www.arista.com/en/um-eos/eos-virtual-lans-vlans) and [Data Transfer](https://www.arista.com/en/um-eos/eos-data-transfer).
+Layer 2 command and output source: [Arista EOS 4.36.1F Virtual LANs](https://www.arista.com/en/um-eos/eos-virtual-lans-vlans), including trunk mode, allowed/native VLANs, reset forms, `show interfaces trunk`, and `show interfaces vlans`.
+
+MAC address table source: [Arista EOS 4.36.1F Data Transfer](https://www.arista.com/en/um-eos/eos-data-transfer).
 
 ## Network Foundations priorities
 
