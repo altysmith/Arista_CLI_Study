@@ -1,0 +1,90 @@
+{
+  "title": "EOS Command Reference",
+  "categories": [
+    {
+      "id": "navigation",
+      "title": "Navigation and help",
+      "commands": [
+        {"command": "?", "description": "List commands available at the current prompt."},
+        {"command": "enable", "description": "Enter Privileged EXEC mode."},
+        {"command": "configure terminal", "description": "Enter Global Configuration mode."},
+        {"command": "exit", "description": "Move back one CLI level."},
+        {"command": "end", "description": "Return directly to Privileged EXEC mode."},
+        {"command": "disable", "description": "Return from Privileged EXEC to EXEC mode."}
+      ]
+    },
+    {
+      "id": "system",
+      "title": "Configuration and system",
+      "commands": [
+        {"command": "show running-config", "description": "Display the active configuration."},
+        {"command": "show startup-config", "description": "Display the most recently saved configuration."},
+        {"command": "show version", "description": "Display simulator and EOS compatibility information."},
+        {"command": "copy running-config startup-config", "description": "Save the running configuration."},
+        {"command": "write", "description": "Save the running configuration using the short EOS workflow."}
+      ]
+    },
+    {
+      "id": "layer2-show",
+      "title": "Layer 2 verification",
+      "commands": [
+        {"command": "show vlan", "description": "Display VLANs and access-port membership."},
+        {"command": "show vlan <VLAN_ID>", "description": "Display one VLAN."},
+        {"command": "show interfaces status", "description": "Show a concise status summary for all interfaces."},
+        {"command": "show interfaces <INTERFACE> switchport", "description": "Show access, trunk, native, and allowed VLAN settings for one port."},
+        {"command": "show interfaces trunk", "description": "List configured trunks and their permitted VLANs."},
+        {"command": "show interfaces <INTERFACE> vlans", "description": "Show tagged and untagged VLAN membership for one interface."},
+        {"command": "show mac address-table", "description": "Display learned MAC addresses when topology learning is available."},
+        {"command": "show spanning-tree", "description": "Display local spanning-tree configuration and simulated port state."}
+      ]
+    },
+    {
+      "id": "layer2-config",
+      "title": "VLAN and trunk configuration",
+      "commands": [
+        {"command": "vlan <VLAN_ID>", "description": "Create or enter a VLAN."},
+        {"command": "interface <INTERFACE>", "description": "Enter interface configuration mode."},
+        {"command": "switchport mode access", "description": "Configure the selected interface as an access port."},
+        {"command": "switchport access vlan <VLAN_ID>", "description": "Assign an access VLAN."},
+        {"command": "switchport mode trunk", "description": "Configure the selected interface as a trunk."},
+        {"command": "switchport trunk allowed vlan <LIST>", "description": "Replace the trunk's allowed VLAN list."},
+        {"command": "switchport trunk allowed vlan add <LIST>", "description": "Add VLANs without removing the existing allowed list."},
+        {"command": "switchport trunk allowed vlan remove <LIST>", "description": "Remove selected VLANs from a trunk."},
+        {"command": "no shutdown", "description": "Administratively enable the selected interface."}
+      ]
+    },
+    {
+      "id": "routing",
+      "title": "Layer 3 verification",
+      "commands": [
+        {"command": "show ip interface brief", "description": "Summarize IPv4 addresses and interface state."},
+        {"command": "show ip route", "description": "Display connected and configured IPv4 routes."},
+        {"command": "show arp", "description": "Display ARP entries when topology learning is available."},
+        {"command": "show ip protocols", "description": "Display configured dynamic routing protocols."},
+        {"command": "show ip ospf", "description": "Display configured OSPF processes."},
+        {"command": "show ip ospf neighbor", "description": "Display OSPF neighbors when multi-device routing is available."},
+        {"command": "show ipv6 interface brief", "description": "Summarize IPv6 addresses and interface state."},
+        {"command": "show ipv6 route", "description": "Display connected and configured IPv6 routes."}
+      ]
+    },
+    {
+      "id": "lacp-mlag",
+      "title": "LACP, LLDP, and MLAG",
+      "commands": [
+        {"command": "show lldp neighbors", "description": "Display directly connected neighbors when a topology is present."},
+        {"command": "show port-channel dense", "description": "Summarize port-channels, member ports, and configured LACP modes."},
+        {"command": "channel-group <ID> mode active", "description": "Place selected interfaces into an active LACP group."},
+        {"command": "show mlag", "description": "Display MLAG configuration completeness and simulated state."}
+      ]
+    },
+    {
+      "id": "security-qos",
+      "title": "ACL and QoS verification",
+      "commands": [
+        {"command": "show ip access-lists", "description": "Display configured IPv4 access lists."},
+        {"command": "show management ssh ip access-list", "description": "Display the ACL attached to SSH management access."},
+        {"command": "show policy-map", "description": "Display configured QoS policy maps and actions."}
+      ]
+    }
+  ]
+}

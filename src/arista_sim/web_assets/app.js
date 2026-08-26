@@ -6,6 +6,7 @@ const state = {
   draft: "",
   labs: [],
   labId: null,
+  reference: null,
 };
 
 const output = document.querySelector("#terminal-output");
@@ -15,6 +16,9 @@ const promptLabel = document.querySelector("#prompt");
 const connection = document.querySelector(".connection");
 const connectionLabel = document.querySelector("#connection-label");
 const labSelect = document.querySelector("#lab-select");
+const referenceDialog = document.querySelector("#command-reference");
+const referenceSearch = document.querySelector("#reference-search");
+const referenceGroups = document.querySelector("#reference-groups");
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -111,14 +115,16 @@ async function startSession(labId) {
 
 async function initialize() {
   try {
-    const catalog = await api("/api/labs");
+    const [catalog, reference] = await Promise.all([api("/api/labs"), api("/api/reference")]);
     state.labs = catalog.labs;
+    state.reference = reference;
     labSelect.replaceChildren(...state.labs.map((lab) => {
       const option = document.createElement("option");
       option.value = lab.id;
       option.textContent = lab.title;
       return option;
     }));
+    renderReference("");
     await startSession(state.labs[0].id);
   } catch (error) {
     setConnection("error", "Simulator unavailable");
@@ -126,6 +132,60 @@ async function initialize() {
     input.disabled = true;
   }
 }
+
+function renderReference(query) {
+  const normalized = query.trim().toLowerCase();
+  const groups = state.reference.categories.map((category) => ({
+    ...category,
+    commands: category.commands.filter((item) =>
+      `${category.title} ${item.command} ${item.description}`.toLowerCase().includes(normalized)
+    ),
+  })).filter((category) => category.commands.length);
+
+  referenceGroups.replaceChildren(...groups.map((category) => {
+    const section = document.createElement("section");
+    section.className = "reference-group";
+    const heading = document.createElement("h3");
+    heading.textContent = category.title;
+    const list = document.createElement("div");
+    list.className = "reference-list";
+    list.replaceChildren(...category.commands.map((item) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "command-chip";
+      button.dataset.command = item.command;
+      const command = document.createElement("code");
+      command.textContent = item.command;
+      const description = document.createElement("span");
+      description.textContent = item.description;
+      button.append(command, description);
+      return button;
+    }));
+    section.append(heading, list);
+    return section;
+  }));
+  document.querySelector("#reference-empty").hidden = groups.length !== 0;
+}
+
+document.querySelector("#reference-open").addEventListener("click", () => {
+  referenceSearch.value = "";
+  renderReference("");
+  referenceDialog.showModal();
+  referenceSearch.focus();
+});
+
+document.querySelector("#reference-close").addEventListener("click", () => referenceDialog.close());
+referenceSearch.addEventListener("input", () => renderReference(referenceSearch.value));
+referenceGroups.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-command]");
+  if (!button) return;
+  input.value = button.dataset.command;
+  referenceDialog.close();
+  input.disabled = false;
+  input.focus();
+  const placeholder = input.value.match(/<[^>]+>/);
+  if (placeholder) input.setSelectionRange(placeholder.index, placeholder.index + placeholder[0].length);
+});
 
 labSelect.addEventListener("change", async () => {
   const requestedLab = labSelect.value;
