@@ -47,7 +47,7 @@ The browser lab reuses the same `Session` and `DeviceState` objects as the local
 - execute one EOS command and return its output and next prompt;
 - grade the current device state against the selected lab.
 
-Lab files are declarative JSON resources. Learner-facing objectives and hints are separated from private grading checks, so the browser never receives the answer conditions. The initial grader supports VLAN existence/naming and interface-attribute assertions. New safe assertion types can be added as topology and protocol state become available.
+Lab files are declarative JSON resources. Learner-facing objectives and hints are separated from private grading checks and setup commands, so the browser never receives answer conditions or the commands used to construct a starting scenario. Reset creates a fresh session and deterministically reapplies that hidden starting configuration. The grader supports VLAN existence/naming and scalar or set-valued interface-attribute assertions. New safe assertion types can be added as topology and protocol state become available.
 
 This service boundary is intentionally single-device and local for the first browser milestone. It gives the future multi-device topology engine a stable place to attach without duplicating the CLI parser in JavaScript.
 

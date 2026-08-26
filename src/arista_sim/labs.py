@@ -24,7 +24,8 @@ def get_lab(lab_id: str) -> dict[str, Any]:
 
 
 def public_lab(lab: dict[str, Any]) -> dict[str, Any]:
-    return {key: value for key, value in lab.items() if key != "checks"}
+    private_keys = {"checks", "setup_commands"}
+    return {key: value for key, value in lab.items() if key not in private_keys}
 
 
 def grade_lab(device: DeviceState, lab: dict[str, Any]) -> dict[str, Any]:
@@ -50,10 +51,14 @@ def _grade_check(device: DeviceState, check: dict[str, Any]) -> dict[str, Any]:
     elif check_type == "interface_attribute":
         interface = device.interfaces.get(str(check["interface"]))
         attribute = str(check["attribute"])
+        expected = check["equals"]
+        actual = getattr(interface, attribute) if interface is not None and attribute in interface.__dataclass_fields__ else None
+        if isinstance(actual, set) and isinstance(expected, list):
+            expected = set(expected)
         passed = (
             interface is not None
             and attribute in interface.__dataclass_fields__
-            and getattr(interface, attribute) == check["equals"]
+            and actual == expected
         )
     else:
         raise ValueError(f"Unsupported lab check type: {check_type}")

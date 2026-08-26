@@ -32,9 +32,9 @@ class SessionStore:
         self._lock = threading.Lock()
 
     def create(self, lab_id: str) -> tuple[str, BrowserSession]:
-        get_lab(lab_id)
+        lab = get_lab(lab_id)
         session_id = uuid.uuid4().hex
-        browser_session = BrowserSession(Session(), lab_id)
+        browser_session = BrowserSession(self._starting_session(lab), lab_id)
         with self._lock:
             self._sessions[session_id] = browser_session
         return session_id, browser_session
@@ -48,10 +48,20 @@ class SessionStore:
 
     def reset(self, session_id: str) -> BrowserSession:
         current = self.get(session_id)
-        replacement = BrowserSession(Session(), current.lab_id)
+        replacement = BrowserSession(self._starting_session(get_lab(current.lab_id)), current.lab_id)
         with self._lock:
             self._sessions[session_id] = replacement
         return replacement
+
+    @staticmethod
+    def _starting_session(lab: dict[str, Any]) -> Session:
+        cli = Session()
+        for command in lab.get("setup_commands", []):
+            output = cli.execute(str(command))
+            if output.startswith("%"):
+                raise ValueError(f"Invalid setup command in {lab['id']}: {command}: {output}")
+        cli.history.clear()
+        return cli
 
 
 class LabApplication:
