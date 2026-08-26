@@ -4,7 +4,7 @@ A local, dependency-free training simulator that teaches EOS CLI discovery and c
 
 ## Browser lab
 
-The first browser-based practice lab provides a real terminal backed by the same stateful simulator, an access-VLAN exercise, contextual objectives and hints, reset controls, and state-based grading.
+The browser-based practice environment provides a real terminal backed by the same stateful simulator, selectable access-VLAN and existing-trunk exercises, contextual objectives and hints, reset controls, and state-based grading. Lab-specific starting configurations are restored whenever an exercise is reset.
 
 - On Windows, double-click `run_web_lab.bat`.
 - On macOS, double-click `run_web_lab.command`.

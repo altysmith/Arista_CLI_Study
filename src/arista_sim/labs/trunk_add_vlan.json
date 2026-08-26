@@ -1,0 +1,63 @@
+{
+  "id": "trunk-add-vlan",
+  "title": "Add a VLAN to an Existing Trunk",
+  "summary": "Permit a new VLAN without removing the VLANs already carried by a trunk.",
+  "difficulty": "Foundation",
+  "estimated_minutes": 6,
+  "brief": "Ethernet48 is an active trunk that already carries VLANs 10 and 20. A new application requires VLAN 30 across the same link. Add VLAN 30 without disrupting the existing allowed VLANs.",
+  "objectives": [
+    "Inspect the current Ethernet48 trunk configuration",
+    "Add VLAN 30 to the existing allowed VLAN list",
+    "Preserve VLANs 10 and 20 on the trunk",
+    "Verify the final allowed and active VLANs"
+  ],
+  "hints": [
+    "Start with show interfaces Ethernet48 switchport or show interfaces trunk.",
+    "Replacing an allowed list and adding to it are different operations.",
+    "EOS supports an add keyword in the switchport trunk allowed VLAN command.",
+    "The final allowed list should contain VLANs 10, 20, and 30."
+  ],
+  "setup_commands": [
+    "enable",
+    "configure terminal",
+    "vlan 10",
+    "name USERS",
+    "exit",
+    "vlan 20",
+    "name VOICE",
+    "exit",
+    "vlan 30",
+    "name APPLICATION",
+    "exit",
+    "interface Ethernet48",
+    "description Uplink-to-distribution",
+    "switchport mode trunk",
+    "switchport trunk allowed vlan 10,20",
+    "no shutdown",
+    "end",
+    "disable"
+  ],
+  "checks": [
+    {
+      "type": "interface_attribute",
+      "interface": "Ethernet48",
+      "attribute": "switchport_mode",
+      "equals": "trunk",
+      "label": "Ethernet48 remains a trunk"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Ethernet48",
+      "attribute": "allowed_vlans",
+      "equals": [10, 20, 30],
+      "label": "Ethernet48 allows VLANs 10, 20, and 30"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Ethernet48",
+      "attribute": "admin_up",
+      "equals": true,
+      "label": "Ethernet48 remains administratively enabled"
+    }
+  ]
+}

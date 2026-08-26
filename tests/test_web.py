@@ -33,8 +33,8 @@ class WebTests(unittest.TestCase):
             content_type = response.headers["Content-Type"]
             return response.status, content_type, body
 
-    def create_session(self):
-        _, _, body = self.request("/api/sessions", {"lab_id": "access-vlan-basics"})
+    def create_session(self, lab_id="access-vlan-basics"):
+        _, _, body = self.request("/api/sessions", {"lab_id": lab_id})
         return json.loads(body)
 
     def command(self, session_id, command):
@@ -53,7 +53,9 @@ class WebTests(unittest.TestCase):
         catalog = json.loads(body)
         self.assertEqual(status, 200)
         self.assertEqual(catalog["labs"][0]["id"], "access-vlan-basics")
+        self.assertEqual(len(catalog["labs"]), 2)
         self.assertNotIn("checks", catalog["labs"][0])
+        self.assertNotIn("setup_commands", catalog["labs"][1])
 
     def test_terminal_api_preserves_prompts_and_state(self):
         session = self.create_session()
@@ -95,6 +97,32 @@ class WebTests(unittest.TestCase):
         self.request(f"/api/sessions/{session_id}/reset", {})
         _, _, body = self.request(f"/api/sessions/{session_id}/grade", {})
         self.assertFalse(json.loads(body)["passed"])
+
+    def test_existing_trunk_lab_loads_grades_and_resets_starting_state(self):
+        session = self.create_session("trunk-add-vlan")
+        session_id = session["session_id"]
+        self.assertEqual(session["prompt"], "switch>")
+
+        self.command(session_id, "enable")
+        initial = self.command(session_id, "show interfaces Ethernet48 switchport")
+        self.assertIn("Trunking VLANs Enabled: 10,20", initial["output"])
+
+        for command in (
+            "configure terminal",
+            "interface Ethernet48",
+            "switchport trunk allowed vlan add 30",
+            "end",
+        ):
+            self.command(session_id, command)
+
+        _, _, body = self.request(f"/api/sessions/{session_id}/grade", {})
+        self.assertTrue(json.loads(body)["passed"])
+
+        self.request(f"/api/sessions/{session_id}/reset", {})
+        _, _, body = self.request(f"/api/sessions/{session_id}/grade", {})
+        reset_grade = json.loads(body)
+        self.assertFalse(reset_grade["passed"])
+        self.assertEqual(reset_grade["passed_count"], 2)
 
     def test_unknown_session_returns_not_found(self):
         with self.assertRaises(HTTPError) as context:

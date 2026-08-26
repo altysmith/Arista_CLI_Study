@@ -4,6 +4,8 @@ const state = {
   history: [],
   historyIndex: 0,
   draft: "",
+  labs: [],
+  labId: null,
 };
 
 const output = document.querySelector("#terminal-output");
@@ -12,6 +14,7 @@ const input = document.querySelector("#command-input");
 const promptLabel = document.querySelector("#prompt");
 const connection = document.querySelector(".connection");
 const connectionLabel = document.querySelector("#connection-label");
+const labSelect = document.querySelector("#lab-select");
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -69,21 +72,35 @@ function renderLab(lab) {
   }));
 }
 
-async function startSession() {
+function resetBrowserState() {
+  state.history = [];
+  state.historyIndex = 0;
+  state.draft = "";
+  output.replaceChildren();
+  document.querySelector("#grade-panel").hidden = true;
+  document.querySelector("#progress-label").textContent = "Not checked";
+}
+
+async function startSession(labId) {
   try {
-    const labs = await api("/api/labs");
+    input.disabled = true;
+    resetBrowserState();
     const session = await api("/api/sessions", {
       method: "POST",
-      body: JSON.stringify({ lab_id: labs.labs[0].id }),
+      body: JSON.stringify({ lab_id: labId }),
     });
     state.sessionId = session.session_id;
+    state.labId = session.lab.id;
     state.prompt = session.prompt;
+    labSelect.value = state.labId;
     promptLabel.textContent = state.prompt;
     renderLab(session.lab);
     appendLine("Arista Network Foundations Simulator — Browser Lab", "welcome");
+    appendLine("Starting configuration loaded. Use show commands to inspect the switch.", "welcome");
     appendLine("Type ? for contextual help. Complete the objectives, then check your work.", "welcome");
     appendLine("");
     setConnection("ready", "Simulator ready");
+    input.disabled = false;
     input.focus();
   } catch (error) {
     setConnection("error", "Simulator unavailable");
@@ -91,6 +108,33 @@ async function startSession() {
     input.disabled = true;
   }
 }
+
+async function initialize() {
+  try {
+    const catalog = await api("/api/labs");
+    state.labs = catalog.labs;
+    labSelect.replaceChildren(...state.labs.map((lab) => {
+      const option = document.createElement("option");
+      option.value = lab.id;
+      option.textContent = lab.title;
+      return option;
+    }));
+    await startSession(state.labs[0].id);
+  } catch (error) {
+    setConnection("error", "Simulator unavailable");
+    appendLine(error.message, "error-line");
+    input.disabled = true;
+  }
+}
+
+labSelect.addEventListener("change", async () => {
+  const requestedLab = labSelect.value;
+  if (state.sessionId && !window.confirm("Switch labs and discard the current lab configuration?")) {
+    labSelect.value = state.labId;
+    return;
+  }
+  await startSession(requestedLab);
+});
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -185,7 +229,7 @@ document.querySelector("#reset-lab").addEventListener("click", async () => {
     output.replaceChildren();
     appendLine("Lab reset. The switch is back at its starting state.", "welcome");
     document.querySelector("#grade-panel").hidden = true;
-    document.querySelector("#progress-label").textContent = "0 / 0";
+    document.querySelector("#progress-label").textContent = "Not checked";
     input.disabled = false;
     input.focus();
   } catch (error) {
@@ -193,4 +237,4 @@ document.querySelector("#reset-lab").addEventListener("click", async () => {
   }
 });
 
-startSession();
+initialize();
