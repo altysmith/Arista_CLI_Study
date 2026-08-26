@@ -15,10 +15,14 @@ The official EOS 4.36.1F CLI manual confirms:
 - Case-insensitive keywords and truncated keywords only when the abbreviation is unique. The manual's own example rejects `con` as ambiguous and accepts `conf` as `configure`.
 - `?` lists commands at the current level, filters keywords from a partial token, and lists the next keywords or arguments.
 - `show running-config`, and separate running/startup configurations saved with `write` or `copy running-config startup-config`.
+- `show interfaces [INTERFACE] trunk` displays configuration and status for trunk interfaces.
+- `show mac address-table` is the EOS command for displaying learned and configured MAC table entries.
 
 Primary behavior source: [Arista EOS 4.36.1F Command-Line Interface](https://www.arista.com/en/um-eos/eos-command-line-interface-cli).
 
 Layer 2 command and output source: [Arista EOS 4.36.1F Virtual LANs](https://www.arista.com/en/um-eos/eos-virtual-lans-vlans), including trunk mode, allowed/native VLANs, reset forms, `show interfaces trunk`, and `show interfaces vlans`.
+
+MAC address table source: [Arista EOS 4.36.1F Data Transfer](https://www.arista.com/en/um-eos/eos-data-transfer).
 
 ## Network Foundations priorities
 

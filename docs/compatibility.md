@@ -7,7 +7,7 @@ This file prevents simulated behavior from being mistaken for verified EOS behav
 | CLI mode prompts/navigation | Supported | EXEC, privileged EXEC, global, VLAN, interface, RIP, ACL, MLAG, control-plane, management-SSH, class-map, and policy-map modes |
 | Unique command abbreviation | Supported | Token-level literals plus interface aliases |
 | Contextual `?` | Supported | Immediate current-level, partial-keyword, and next-token help in the Windows console |
-| Command history | Supported | Up/Down arrows recall commands entered in the current session |
+| Command history | Supported | Up/Down arrows recall commands entered in the current session on Windows, macOS, and Linux |
 | Tab completion | Partial | Unique completion and ambiguous choices work in the Windows console; cursor movement editing is not implemented |
 | Parent-mode command inheritance | Partial | Navigation is modeled; broad execution of every parent-mode command from child modes is not yet implemented |
 | Hostname | Supported | Prompt changes immediately |

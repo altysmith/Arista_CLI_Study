@@ -9,13 +9,26 @@ if TYPE_CHECKING:
 
 
 def read_command(session: "Session") -> str:
-    """Read a command, providing basic Tab completion on a Windows console."""
-    if os.name != "nt" or not sys.stdin.isatty():
+    """Read a command with platform-appropriate interactive line editing."""
+    if not sys.stdin.isatty():
+        return input(f"{session.prompt} ")
+
+    if os.name != "nt":
+        _enable_readline()
         return input(f"{session.prompt} ")
 
     import msvcrt
 
     return _read_windows_command(session, msvcrt.getwch, sys.stdout)
+
+
+def _enable_readline() -> bool:
+    """Enable ANSI-terminal editing and history when readline is available."""
+    try:
+        import readline  # noqa: F401
+    except ImportError:
+        return False
+    return True
 
 
 def _read_windows_command(

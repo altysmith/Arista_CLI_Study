@@ -1059,6 +1059,9 @@ class Session:
             return "No dynamic routing protocol configured"
         return "\n\n".join(blocks)
 
+    def _show_interfaces_trunk(self, _: dict) -> str:
+        return show_interfaces_trunk(self.device)
+
     def _save(self, _: dict) -> str:
         self.device.save_startup()
         return "Copy completed successfully."
