@@ -2,6 +2,21 @@
 
 A local, dependency-free training simulator that teaches EOS CLI discovery and configuration workflow. Milestone 1 implements a small but stateful EOS-style shell; it does not emulate EOS or switch hardware.
 
+## Browser lab
+
+The first browser-based practice lab provides a real terminal backed by the same stateful simulator, an access-VLAN exercise, contextual objectives and hints, reset controls, and state-based grading.
+
+- On Windows, double-click `run_web_lab.bat`.
+- On macOS, double-click `run_web_lab.command`.
+
+The launcher opens `http://127.0.0.1:8765` in your default browser. Keep its terminal window open while practicing; press Ctrl+C there when you are finished.
+
+You can also start it manually:
+
+```console
+python -m arista_sim.web
+```
+
 ## Run it
 
 On Windows, double-click `run_simulator.bat`.

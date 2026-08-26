@@ -11,6 +11,7 @@ dependencies = []
 
 [project.scripts]
 arista-sim = "arista_sim.main:main"
+arista-lab = "arista_sim.web:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -18,3 +19,5 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+arista_sim = ["labs/*.json", "web_assets/*"]

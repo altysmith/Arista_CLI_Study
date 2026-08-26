@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#091318">
+    <title>Arista CLI Practice Lab</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Network operations practice</p>
+        <h1>Arista CLI Lab</h1>
+      </div>
+      <div class="connection" aria-live="polite">
+        <span class="connection-dot"></span>
+        <span id="connection-label">Starting simulator…</span>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="terminal-card" aria-label="EOS terminal">
+        <div class="terminal-toolbar">
+          <div class="terminal-title">
+            <span class="device-icon">SW</span>
+            <div>
+              <strong>Training switch</strong>
+              <span>EOS practice session</span>
+            </div>
+          </div>
+          <button id="clear-terminal" class="quiet-button" type="button">Clear screen</button>
+        </div>
+        <div id="terminal-output" class="terminal-output" role="log" aria-live="polite" aria-label="Terminal output"></div>
+        <form id="terminal-form" class="terminal-input-row" autocomplete="off">
+          <label id="prompt" for="command-input">switch&gt;</label>
+          <input id="command-input" name="command" type="text" spellcheck="false" autocapitalize="none" aria-label="EOS command" autofocus>
+        </form>
+      </section>
+
+      <aside class="lab-card" aria-label="Lab instructions">
+        <div class="lab-heading">
+          <span id="lab-difficulty" class="badge">Foundation</span>
+          <span id="lab-time" class="lab-time">8 min</span>
+        </div>
+        <h2 id="lab-title">Access VLAN Fundamentals</h2>
+        <p id="lab-brief" class="lab-brief"></p>
+
+        <div class="section-heading">
+          <h3>Objectives</h3>
+          <span id="progress-label">0 / 0</span>
+        </div>
+        <ol id="objectives" class="objective-list"></ol>
+
+        <div id="grade-panel" class="grade-panel" hidden>
+          <h3 id="grade-title">Progress check</h3>
+          <ul id="grade-results"></ul>
+        </div>
+
+        <details class="hints">
+          <summary>Need a hint?</summary>
+          <ul id="hints-list"></ul>
+        </details>
+
+        <div class="lab-actions">
+          <button id="check-work" class="primary-button" type="button">Check my work</button>
+          <button id="reset-lab" class="secondary-button" type="button">Reset lab</button>
+        </div>
+        <p class="keyboard-help">Enter runs a command · ↑ and ↓ recall commands · Ctrl+L clears the screen</p>
+      </aside>
+    </main>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>

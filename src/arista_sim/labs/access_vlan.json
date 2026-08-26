@@ -1,0 +1,54 @@
+{
+  "id": "access-vlan-basics",
+  "title": "Access VLAN Fundamentals",
+  "summary": "Create a user VLAN and place an edge port into it.",
+  "difficulty": "Foundation",
+  "estimated_minutes": 8,
+  "brief": "The users connected to Ethernet1 belong in VLAN 20. Build the VLAN, give it a useful name, configure the port as an enabled access port, and verify your work.",
+  "objectives": [
+    "Create VLAN 20 and name it USERS",
+    "Configure Ethernet1 as an access port in VLAN 20",
+    "Ensure Ethernet1 is administratively enabled",
+    "Verify the result with EOS show commands"
+  ],
+  "hints": [
+    "Use enable and configure terminal to reach global configuration mode.",
+    "VLAN names are configured from VLAN configuration mode.",
+    "An access VLAN and switchport mode are separate interface commands.",
+    "show vlan and show interfaces Ethernet1 switchport are useful verification commands."
+  ],
+  "checks": [
+    {
+      "type": "vlan_exists",
+      "vlan": 20,
+      "label": "VLAN 20 exists"
+    },
+    {
+      "type": "vlan_name",
+      "vlan": 20,
+      "equals": "USERS",
+      "label": "VLAN 20 is named USERS"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Ethernet1",
+      "attribute": "switchport_mode",
+      "equals": "access",
+      "label": "Ethernet1 is an access port"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Ethernet1",
+      "attribute": "access_vlan",
+      "equals": 20,
+      "label": "Ethernet1 uses VLAN 20"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Ethernet1",
+      "attribute": "admin_up",
+      "equals": true,
+      "label": "Ethernet1 is administratively enabled"
+    }
+  ]
+}

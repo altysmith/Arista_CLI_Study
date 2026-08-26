@@ -7,7 +7,8 @@
 - `models/device.py`: structured running and startup state.
 - `renderers.py`: derives `show` output and running configuration from state.
 - Later `simulation/`: forwarding and topology logic, deliberately absent from Milestone 1.
-- Later `labs/`: declarative scenarios and state-based validation, deliberately absent from Milestone 1.
+- `labs/` and `labs.py`: declarative scenarios and safe, state-based validation.
+- `web.py` and `web_assets/`: local browser service and terminal interface over the same CLI session engine.
 
 The command transcript is never the source of truth. Commands mutate `DeviceState`; renderers and future validators read that state.
 
@@ -37,6 +38,19 @@ This lets future switching/routing engines depend on the same state without pars
 - A scripted acceptance transcript covers the complete Milestone 1 interaction.
 - Future features must pair configuration tests with verification commands and state-based lab validation.
 
+## Browser lab boundary
+
+The browser lab reuses the same `Session` and `DeviceState` objects as the local terminal. A dependency-free local HTTP service owns isolated in-memory sessions and exposes four small capabilities:
+
+- list available labs;
+- create or reset a simulator session;
+- execute one EOS command and return its output and next prompt;
+- grade the current device state against the selected lab.
+
+Lab files are declarative JSON resources. Learner-facing objectives and hints are separated from private grading checks, so the browser never receives the answer conditions. The initial grader supports VLAN existence/naming and interface-attribute assertions. New safe assertion types can be added as topology and protocol state become available.
+
+This service boundary is intentionally single-device and local for the first browser milestone. It gives the future multi-device topology engine a stable place to attach without duplicating the CLI parser in JavaScript.
+
 ## Baseline acceptance
 
 - The reference transcript in the README succeeds.
@@ -45,4 +59,3 @@ This lets future switching/routing engines depend on the same state without pars
 - Wrong-mode, incomplete, and invalid arguments fail without mutating state.
 - `show vlan`, interface switchport output, and running-config are derived from state.
 - Saving startup configuration creates a distinct snapshot.
-
