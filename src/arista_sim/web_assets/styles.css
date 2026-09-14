@@ -16,6 +16,26 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+.campus-panel { grid-column: 1 / -1; border: 1px solid var(--line); border-radius: 16px; padding: 24px; background: var(--panel); }
+.campus-panel h2 { font-size: 1.1rem; margin-bottom: 0; }
+.campus-panel p, .campus-panel summary { font-size: 14px; color: var(--muted); }
+.topology { max-width: 780px; margin: 18px auto; }
+.node { display: block; padding: 12px 28px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-raised); color: var(--text); cursor: pointer; min-width: 160px; }
+.node[aria-pressed="true"] { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan); }
+.node span { display: block; color: var(--muted); font-size: 14px; margin-top: 4px; }
+.distribution { margin: auto; }
+.uplinks, .access-row { display: flex; justify-content: space-around; gap: 16px; }
+.uplinks { padding: 14px 0; color: var(--cyan); font-family: var(--mono); font-size: 14px; }
+.host-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin-top: 16px; }
+.host-list p { margin: 0; padding: 8px; border-left: 2px solid var(--line); }
+.ping-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin: 20px 0 12px; }
+.ping-controls label { display: grid; gap: 5px; font-size: 14px; }
+.ping-controls select { padding: 8px; color: var(--text); background: var(--panel-raised); border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+#host-arp { overflow: auto; font-size: 14px; }
+button:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+@media(max-width: 600px) { .campus-panel { padding: 16px; } .node { min-width: 0; padding: 10px 14px; } .host-list { gap: 8px; } }
 
 body {
   margin: 0;

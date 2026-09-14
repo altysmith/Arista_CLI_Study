@@ -1,0 +1,12 @@
+{
+  "id": "campus-trunk-ticket",
+  "title": "Campus ticket: students isolated",
+  "summary": "Restore one VLAN across college uplinks without breaking the others.",
+  "difficulty": "Campus · Break/fix",
+  "estimated_minutes": 15,
+  "brief": "Students cannot communicate between fictional Colleges A and B after an uplink change. Staff connectivity is still working. Find and repair the fault without interrupting staff or removing the reserved management VLAN. VLAN 10 is STAFF, VLAN 20 is STUDENTS, VLAN 99 is MANAGEMENT. This lab uses a fixed, loop-free Layer 2 topology with no gateways.",
+  "objectives": ["Restore STUDENT-A to STUDENT-B connectivity", "Preserve STAFF-A to STAFF-B connectivity", "Keep staff and student broadcast domains separate", "Preserve VLAN 99 on every uplink"],
+  "hints": ["Start with host ping for both the staff and student pairs.", "Follow LLDP neighbors and compare show interfaces trunk on both ends of each link.", "An allowed-VLAN change can add a missing VLAN without replacing the existing list."],
+  "campus_fault": "trunk",
+  "checks": []
+}

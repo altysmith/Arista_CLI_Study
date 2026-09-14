@@ -1,5 +1,9 @@
 # EOS compatibility
 
+## Campus browser exercises
+
+The campus tickets add a fixed, loop-free, three-switch Layer 2 model, with four fixed-address hosts. LLDP and interface link status derive from links and administrative state. Simulated host ARP/ICMP traffic traverses access and trunk ports with native/allowed VLAN handling and learns source MAC addresses. Host ARP is shown in the topology panel. Grading does not generate traffic. Learning tables clear on configuration/navigation commands and server restart; aging, timers, routing, STP convergence, LACP, MLAG and ACL enforcement remain outside this model. The single-device compatibility table below describes the original standalone exercises.
+
 This file prevents simulated behavior from being mistaken for verified EOS behavior.
 
 | Feature | Status | Notes |

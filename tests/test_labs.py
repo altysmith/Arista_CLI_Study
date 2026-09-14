@@ -8,7 +8,7 @@ class LabTests(unittest.TestCase):
     def test_catalog_loads_public_lab_without_private_checks(self):
         labs = load_labs()
         self.assertEqual(labs[0]["id"], "access-vlan-basics")
-        self.assertEqual({lab["id"] for lab in labs}, {"access-vlan-basics", "trunk-add-vlan"})
+        self.assertTrue({"access-vlan-basics", "trunk-add-vlan", "campus-access-ticket", "campus-trunk-ticket"}.issubset({lab["id"] for lab in labs}))
         self.assertNotIn("checks", public_lab(labs[0]))
         trunk = get_lab("trunk-add-vlan")
         self.assertNotIn("setup_commands", public_lab(trunk))

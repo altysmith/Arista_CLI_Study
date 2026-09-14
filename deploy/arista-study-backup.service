@@ -1,0 +1,13 @@
+[Unit]
+Description=Back up Arista study progress
+
+[Service]
+Type=oneshot
+User=ealtenho
+Group=ealtenho
+ExecStart=/usr/bin/python3 /home/ealtenho/arista-study/current/deploy/backup.py /home/ealtenho/arista-study/user_data/progress.sqlite3 /home/ealtenho/arista-study/backups
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/ealtenho/arista-study/backups

@@ -54,7 +54,7 @@ class WebTests(unittest.TestCase):
         catalog = json.loads(body)
         self.assertEqual(status, 200)
         self.assertEqual(catalog["labs"][0]["id"], "access-vlan-basics")
-        self.assertEqual(len(catalog["labs"]), 2)
+        self.assertGreaterEqual(len(catalog["labs"]), 4)
         self.assertNotIn("checks", catalog["labs"][0])
         self.assertNotIn("setup_commands", catalog["labs"][1])
 
@@ -142,6 +142,32 @@ class WebTests(unittest.TestCase):
             self.assertEqual(context.exception.code, 404)
         finally:
             context.exception.close()
+
+    def test_campus_ticket_can_be_repaired_through_http(self):
+        session = self.create_session("campus-trunk-ticket")
+        self.assertNotIn("campus_fault", session["lab"])
+        self.assertEqual(len(session["campus"]["hosts"]), 4)
+        sid = session["session_id"]
+        self.request(f"/api/sessions/{sid}/campus", {"device": "ACCESS-B"})
+        for cmd in ["enable", "configure terminal", "interface Ethernet48", "switchport trunk allowed vlan add 20", "end"]:
+            self.assertFalse(self.command(sid, cmd)["output"].startswith("%"))
+        _, _, body = self.request(f"/api/sessions/{sid}/grade", {})
+        self.assertTrue(json.loads(body)["passed"])
+        _, _, body = self.request(f"/api/sessions/{sid}/campus", {"source": "STUDENT-A", "destination": "STUDENT-B"})
+        self.assertTrue(json.loads(body)["success"])
+
+    def test_help_does_not_execute_command(self):
+        sid = self.create_session()["session_id"]
+        _, _, body = self.request(f"/api/sessions/{sid}/help", {"command": "en"})
+        self.assertIn("enable", json.loads(body)["output"])
+        self.assertEqual(self.server.app.sessions.get(sid).cli.prompt, "switch>")
+
+    def test_cross_origin_mutation_is_rejected(self):
+        request = Request(self.base_url + "/api/sessions", data=b"{}", headers={"Content-Type": "application/json", "Origin": "https://unrelated.example"})
+        with self.assertRaises(HTTPError) as context:
+            urlopen(request, timeout=2)
+        self.assertEqual(context.exception.code, 403)
+        context.exception.close()
 
 
 if __name__ == "__main__":

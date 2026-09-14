@@ -20,7 +20,7 @@ for candidate in "${python_candidates[@]}"; do
   fi
 
   if "$python_cmd" -c 'import sys; raise SystemExit(sys.version_info < (3, 11))' 2>/dev/null; then
-    "$python_cmd" -m arista_sim.web
+    "$python_cmd" -m arista_sim.web --data-path user_data/progress.sqlite3
     exit_code=$?
     if (( exit_code != 0 )) && [[ -t 0 ]]; then
       read -k 1 "?The browser lab exited with an error. Press any key to close..."

@@ -4,6 +4,12 @@ A local, dependency-free training simulator that teaches EOS CLI discovery and c
 
 ## Browser lab
 
+The campus release adds two fictional three-switch/four-host break/fix tickets: a staff access-port fault and a student trunk fault. Switch consoles expose topology-derived LLDP and MAC learning; the host ping panel tests same-subnet connectivity and shows host ARP. Grading checks both host pairs, Layer 2 isolation, and preservation of management VLAN 99. This fixed, loop-free model does not simulate routing, STP convergence, LACP, MLAG, ACL enforcement, or traffic timing.
+
+For durable saves across refreshes and server restarts, run `python -m arista_sim.web --data-path user_data/progress.sqlite3`. The Windows/macOS browser launchers enable this automatically. Switching exercises resumes each exercise's saved configuration; Reset clears only that exercise. Configurations save independently from EOS startup configuration. Terminal output and learned tables are transient. The hosted app is for one authorized owner, with progress shared across their devices.
+
+See [Pi deployment](docs/pi-deployment.md) for the private subdomain, service, backups, and rollback procedure.
+
 The browser-based practice environment provides a real terminal backed by the same stateful simulator, selectable access-VLAN and existing-trunk exercises, contextual objectives and hints, reset controls, and state-based grading. Lab-specific starting configurations are restored whenever an exercise is reset. A searchable command-reference drawer groups common EOS navigation, verification, switching, routing, LACP/MLAG, ACL, and QoS commands; selecting one places it at the prompt without executing it.
 
 - On Windows, double-click `run_web_lab.bat`.

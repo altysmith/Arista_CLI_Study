@@ -2,6 +2,7 @@
 setlocal
 cd /d "%~dp0"
 set "PYTHONPATH=%CD%\src"
+set "ARISTA_DATA_PATH=%CD%\user_data\progress.sqlite3"
 where py >nul 2>nul
 if not errorlevel 1 (
   py -3 -m arista_sim.web

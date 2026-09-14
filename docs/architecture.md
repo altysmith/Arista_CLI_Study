@@ -1,5 +1,13 @@
 # Architecture and command-pack plan
 
+## Campus web release
+
+`campus.py` adds a bounded, fixed-tree Layer 2 model around existing CLI sessions. Each switch owns independent structured configuration; host traffic evaluates both directions over access/trunk VLAN rules. Grading checks connectivity and separation without generating traffic. The browser switches consoles without dropping other devices' state.
+
+`persistence.py` saves versioned, allowlisted JSON snapshots to SQLite, including running/startup configuration and CLI mode for every device. SQLite connections close explicitly. One request lock serializes mutation and snapshot writes. Resume selects the most recent session for an exercise. The hosted service is intentionally single-owner behind Cloudflare Access; it does not offer per-user tenancy. MAC/ARP learning and terminal output are transient.
+
+The original single-switch architecture and future protocol coverage below remain applicable outside the bounded campus model.
+
 ## Boundaries
 
 - `cli/command_tree.py`: declarative syntax tree, unique-prefix resolution, help, and typed argument parsing.

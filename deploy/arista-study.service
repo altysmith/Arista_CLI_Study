@@ -1,0 +1,25 @@
+[Unit]
+Description=Private Arista campus study lab
+After=network.target
+
+[Service]
+Type=simple
+User=ealtenho
+Group=ealtenho
+WorkingDirectory=/home/ealtenho/arista-study/current
+Environment=PYTHONPATH=/home/ealtenho/arista-study/current/src
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -m arista_sim.web --host 127.0.0.1 --port 8772 --no-browser --data-path /home/ealtenho/arista-study/user_data/progress.sqlite3
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/ealtenho/arista-study/user_data
+MemoryMax=256M
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

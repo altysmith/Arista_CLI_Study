@@ -9,3 +9,6 @@ venv/
 dist/
 build/
 tmp/
+user_data/
+*.sqlite3
+*.sqlite3-*

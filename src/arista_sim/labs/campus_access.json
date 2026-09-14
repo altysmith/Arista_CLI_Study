@@ -1,0 +1,12 @@
+{
+  "id": "campus-access-ticket",
+  "title": "Campus ticket: staff workstation offline",
+  "summary": "Diagnose an access-port fault across a three-switch campus.",
+  "difficulty": "Campus · Break/fix",
+  "estimated_minutes": 15,
+  "brief": "At fictional College A, STAFF-A cannot reach STAFF-B in College B. Student connectivity must remain working. Inspect the three switches, test the hosts, and repair the fault. VLAN 10 is STAFF, VLAN 20 is STUDENTS, and VLAN 99 is reserved for management. This loop-free lab models Layer 2 only; hosts have no gateways.",
+  "objectives": ["Restore STAFF-A to STAFF-B connectivity", "Preserve STUDENT-A to STUDENT-B connectivity", "Keep staff and student broadcast domains separate", "Preserve VLAN 99 on every uplink"],
+  "hints": ["Use the switch buttons to open each console; show lldp neighbors maps the uplinks.", "Compare the access VLAN on the two staff-facing Ethernet1 ports.", "Use host ping to generate traffic, then inspect show mac address-table. Host ARP entries appear beneath the topology."],
+  "campus_fault": "access",
+  "checks": []
+}

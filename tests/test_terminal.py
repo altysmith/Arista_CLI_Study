@@ -7,8 +7,9 @@ from arista_sim.terminal import _enable_readline, _read_windows_command, read_co
 
 
 class TerminalTests(unittest.TestCase):
+    @patch("arista_sim.terminal.sys.stdin.isatty", return_value=False)
     @patch("builtins.input", return_value="enable")
-    def test_non_windows_or_redirected_input_uses_standard_input(self, mocked):
+    def test_non_windows_or_redirected_input_uses_standard_input(self, mocked, _isatty):
         session = Session()
         self.assertEqual(read_command(session), "enable")
         mocked.assert_called_once_with("switch> ")

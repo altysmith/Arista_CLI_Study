@@ -24,7 +24,7 @@ def get_lab(lab_id: str) -> dict[str, Any]:
 
 
 def public_lab(lab: dict[str, Any]) -> dict[str, Any]:
-    private_keys = {"checks", "setup_commands"}
+    private_keys = {"checks", "setup_commands", "campus_fault"}
     return {key: value for key, value in lab.items() if key not in private_keys}
 
 

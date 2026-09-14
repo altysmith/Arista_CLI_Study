@@ -7,6 +7,7 @@ const state = {
   labs: [],
   labId: null,
   reference: null,
+  busy: false,
 };
 
 const output = document.querySelector("#terminal-output");
@@ -25,6 +26,7 @@ async function api(path, options = {}) {
     headers: { "Content-Type": "application/json" },
     ...options,
   });
+  if (!response.headers.get("content-type")?.includes("application/json")) throw new Error("Your sign-in may have expired. Refresh this page to sign in again; saved configurations will remain.");
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error || "Simulator request failed");
   return payload;
@@ -41,6 +43,7 @@ function appendLine(text, className = "") {
   line.className = className;
   line.textContent = text;
   output.append(line);
+  while (output.children.length > 500) output.firstChild.remove();
   output.scrollTop = output.scrollHeight;
 }
 
@@ -86,12 +89,14 @@ function resetBrowserState() {
 }
 
 async function startSession(labId) {
+  state.busy = true;
+  labSelect.disabled = true;
   try {
     input.disabled = true;
     resetBrowserState();
     const session = await api("/api/sessions", {
       method: "POST",
-      body: JSON.stringify({ lab_id: labId }),
+      body: JSON.stringify({ lab_id: labId, resume: true }),
     });
     state.sessionId = session.session_id;
     state.labId = session.lab.id;
@@ -99,17 +104,26 @@ async function startSession(labId) {
     labSelect.value = state.labId;
     promptLabel.textContent = state.prompt;
     renderLab(session.lab);
+    renderCampus(session.campus, session.active);
+    state.history = session.history || [];
+    state.historyIndex = state.history.length;
+    try { localStorage.setItem("arista-last-lab", state.labId); } catch {}
+    document.querySelector("#save-status").textContent = session.durable ? "Configurations autosave on the server. Each lab resumes where you left off, including from another device. Reset starts over." : "Progress lasts until this local server stops. Enable a data path for durable saves.";
     appendLine("Arista Network Foundations Simulator — Browser Lab", "welcome");
-    appendLine("Starting configuration loaded. Use show commands to inspect the switch.", "welcome");
+    appendLine("Lab loaded. Use show commands to inspect the current configuration.", "welcome");
     appendLine("Type ? for contextual help. Complete the objectives, then check your work.", "welcome");
     appendLine("");
     setConnection("ready", "Simulator ready");
-    input.disabled = false;
+    input.disabled = session.closed;
+    if (session.closed) appendLine("Session closed. Reset the lab to continue.", "welcome");
     input.focus();
   } catch (error) {
     setConnection("error", "Simulator unavailable");
     appendLine(error.message, "error-line");
     input.disabled = true;
+  } finally {
+    state.busy = false;
+    labSelect.disabled = false;
   }
 }
 
@@ -125,7 +139,9 @@ async function initialize() {
       return option;
     }));
     renderReference("");
-    await startSession(state.labs[0].id);
+    let lastLab;
+    try { lastLab = localStorage.getItem("arista-last-lab"); } catch {}
+    await startSession(state.labs.find(l => l.id === lastLab)?.id || state.labs[0].id);
   } catch (error) {
     setConnection("error", "Simulator unavailable");
     appendLine(error.message, "error-line");
@@ -189,7 +205,7 @@ referenceGroups.addEventListener("click", (event) => {
 
 labSelect.addEventListener("change", async () => {
   const requestedLab = labSelect.value;
-  if (state.sessionId && !window.confirm("Switch labs and discard the current lab configuration?")) {
+  if (state.busy) {
     labSelect.value = state.labId;
     return;
   }
@@ -198,6 +214,9 @@ labSelect.addEventListener("change", async () => {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (state.busy || !state.sessionId || input.disabled) return;
+  state.busy = true;
+  labSelect.disabled = true;
   const command = input.value;
   input.value = "";
   state.history.push(command);
@@ -214,6 +233,7 @@ form.addEventListener("submit", async (event) => {
     if (result.output) appendLine(result.output, result.output.startsWith("%") ? "error-line" : "");
     state.prompt = result.prompt;
     promptLabel.textContent = state.prompt;
+    renderCampus(result.campus, result.active);
     if (result.closed) {
       appendLine("Session closed. Reset the lab to continue.", "welcome");
     } else {
@@ -224,11 +244,25 @@ form.addEventListener("submit", async (event) => {
     appendLine(error.message, "error-line");
     input.disabled = false;
     input.focus();
+  } finally {
+    state.busy = false;
+    labSelect.disabled = false;
   }
 });
 
-input.addEventListener("keydown", (event) => {
-  if (event.key === "ArrowUp" && state.history.length) {
+input.addEventListener("keydown", async (event) => {
+  if ((event.key === "?" || event.key === "Tab") && state.sessionId && !state.busy) {
+    event.preventDefault();
+    state.busy = true;
+    labSelect.disabled = true;
+    input.disabled = true;
+    try {
+      const result = await api(`/api/sessions/${state.sessionId}/help`, {method: "POST", body: JSON.stringify({command: input.value})});
+      if (event.key === "Tab" && result.matches.length === 1) input.value = result.completed;
+      else appendLine(result.output);
+    } catch (error) { appendLine(error.message, "error-line"); }
+    finally { state.busy = false; labSelect.disabled = false; input.disabled = false; input.focus(); }
+  } else if (event.key === "ArrowUp" && state.history.length) {
     event.preventDefault();
     if (state.historyIndex === state.history.length) state.draft = input.value;
     state.historyIndex = Math.max(0, state.historyIndex - 1);
@@ -249,6 +283,9 @@ document.querySelector("#clear-terminal").addEventListener("click", () => {
 });
 
 document.querySelector("#check-work").addEventListener("click", async () => {
+  if (state.busy || !state.sessionId) return;
+  state.busy = true;
+  labSelect.disabled = true;
   const button = document.querySelector("#check-work");
   button.disabled = true;
   try {
@@ -272,17 +309,22 @@ document.querySelector("#check-work").addEventListener("click", async () => {
     appendLine(error.message, "error-line");
   } finally {
     button.disabled = false;
+    state.busy = false;
+    labSelect.disabled = false;
   }
 });
 
 document.querySelector("#reset-lab").addEventListener("click", async () => {
-  if (!window.confirm("Reset this switch and discard the current lab configuration?")) return;
+  if (state.busy || !state.sessionId || !window.confirm("Reset this entire lab and discard its saved configuration?")) return;
+  state.busy = true;
+  labSelect.disabled = true;
   try {
     const result = await api(`/api/sessions/${state.sessionId}/reset`, {
       method: "POST",
       body: "{}",
     });
     state.prompt = result.prompt;
+    renderCampus(result.campus, result.active);
     state.history = [];
     state.historyIndex = 0;
     promptLabel.textContent = state.prompt;
@@ -294,7 +336,65 @@ document.querySelector("#reset-lab").addEventListener("click", async () => {
     input.focus();
   } catch (error) {
     appendLine(error.message, "error-line");
+  } finally {
+    state.busy = false;
+    labSelect.disabled = false;
   }
+});
+
+function renderCampus(campus, active) {
+  document.querySelector("#campus-panel").hidden = !campus;
+  document.querySelector("#device-title").textContent = active || "Training switch";
+  if (!campus) return;
+  document.querySelectorAll("[data-device]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.device === active)));
+  campus.links.forEach((link, i) => {
+    document.querySelector(i ? "#link-b" : "#link-a").textContent = `${link.ap.replace("Ethernet", "Et")} ↔ ${link.bp.replace("Ethernet", "Et")} · ${link.up ? "up" : "down"}`;
+  });
+  const hosts = [...campus.hosts].sort((a,b) => a.port.localeCompare(b.port) || a.switch.localeCompare(b.switch));
+  document.querySelector("#host-list").replaceChildren(...hosts.map(h => {
+    const p = document.createElement("p");
+    p.textContent = `${h.id} · ${h.address} · ${h.port}`;
+    return p;
+  }));
+  for (const id of ["ping-source", "ping-destination"]) {
+    const select = document.getElementById(id);
+    const previous = select.value;
+    select.replaceChildren(...campus.hosts.map(h => new Option(h.id, h.id)));
+    select.value = previous || (id === "ping-source" ? "STAFF-A" : "STAFF-B");
+  }
+  document.querySelector("#host-arp").textContent = campus.hosts.map(h => `${h.id}: ${Object.entries(h.arp).map(([ip, mac]) => `${ip} → ${mac}`).join(", ") || "No learned entries"}`).join("\n");
+}
+
+document.querySelectorAll("[data-device]").forEach(button => button.addEventListener("click", async () => {
+  if (state.busy) return;
+  state.busy = true;
+  labSelect.disabled = true;
+  input.disabled = true;
+  try {
+    const result = await api(`/api/sessions/${state.sessionId}/campus`, {method: "POST", body: JSON.stringify({device: button.dataset.device})});
+    state.prompt = result.prompt;
+    promptLabel.textContent = result.prompt;
+    state.history = result.history;
+    state.historyIndex = state.history.length;
+    renderCampus(result.campus, result.active);
+    appendLine(`Console: ${result.active}`, "welcome");
+    input.disabled = result.closed;
+    input.focus();
+  } catch (error) { appendLine(error.message, "error-line"); input.disabled = false; }
+  finally { state.busy = false; labSelect.disabled = false; }
+}));
+
+document.querySelector("#ping-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (state.busy) return;
+  state.busy = true;
+  labSelect.disabled = true;
+  try {
+    const result = await api(`/api/sessions/${state.sessionId}/campus`, {method: "POST", body: JSON.stringify({source: document.querySelector("#ping-source").value, destination: document.querySelector("#ping-destination").value})});
+    document.querySelector("#ping-result").textContent = result.output;
+    renderCampus(result.campus, result.active);
+  } catch (error) { document.querySelector("#ping-result").textContent = error.message; }
+  finally { state.busy = false; labSelect.disabled = false; }
 });
 
 initialize();
