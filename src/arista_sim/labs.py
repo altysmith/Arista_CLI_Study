@@ -16,6 +16,11 @@ def load_labs() -> list[dict[str, Any]]:
     return labs
 
 
+def load_sections() -> list[dict[str, Any]]:
+    resource = files("arista_sim").joinpath("reference", "sections.json")
+    return json.loads(resource.read_text(encoding="utf-8"))
+
+
 def get_lab(lab_id: str) -> dict[str, Any]:
     for lab in load_labs():
         if lab["id"] == lab_id:
@@ -48,6 +53,12 @@ def _grade_check(device: DeviceState, check: dict[str, Any]) -> dict[str, Any]:
     elif check_type == "vlan_name":
         vlan = device.vlans.get(int(check["vlan"]))
         passed = vlan is not None and vlan.name == check["equals"]
+    elif check_type == "mlag_attribute":
+        attribute = str(check["attribute"])
+        passed = (
+            attribute in device.mlag.__dataclass_fields__
+            and getattr(device.mlag, attribute) == check["equals"]
+        )
     elif check_type == "interface_attribute":
         interface = device.interfaces.get(str(check["interface"]))
         attribute = str(check["attribute"])

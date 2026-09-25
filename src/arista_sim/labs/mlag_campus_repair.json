@@ -1,0 +1,266 @@
+{
+  "id": "mlag-campus-repair",
+  "title": "MLAG ticket: repair the distribution peer",
+  "summary": "Repair local MLAG settings against a peer handoff while preserving existing trunks and LACP members.",
+  "difficulty": "Foundation",
+  "estimated_minutes": 20,
+  "brief": "A maintenance change left DIST-A with incorrect MLAG settings. You are on DIST-A; DIST-B is a documented reference, not an interactive device in this lab. DIST-B uses domain CAMPUS, peering SVI Vlan4094 at 10.255.255.2/30, and peer-link Port-Channel100. DIST-A must use 10.255.255.1/30 on Vlan4094. Ethernet47 and Ethernet48 form the peer-link bundle. ACCESS-1 is dual-attached through downstream Port-Channel10 (local member Ethernet1); both peers should use MLAG ID 10 and carry VLANs 10 and 20 there. Inspect and repair DIST-A. This simplified exercise grades local configuration only: no remote peer, MLAG forwarding, LACP negotiation, or failover is simulated, and it is not a complete production deployment template.",
+  "objectives": [
+    "Inspect show running-config, show mlag, and show port-channel dense before making changes.",
+    "Match domain CAMPUS and point the MLAG peer address at DIST-B (10.255.255.2).",
+    "Use Vlan4094 as the local interface and Port-Channel100 as the peer link; enable MLAG administratively.",
+    "Set downstream Port-Channel10 to MLAG ID 10 and allow exactly VLANs 10 and 20, preserving VLAN 10.",
+    "Preserve peer-link VLANs 10,20,4094; keep its port channel free of a downstream MLAG ID.",
+    "Preserve VLANs, the local SVI address, enabled interfaces, and LACP active members: Ethernet47-48 in group 100 and Ethernet1 in group 10.",
+    "Inspect the final configuration and check your work. Configured (no peer topology) does not prove a healthy MLAG pair."
+  ],
+  "hints": [
+    "Compare the peer address with the remote SVI, not DIST-A's own address.",
+    "Enter mlag configuration for domain-id, local-interface vlan, peer-address, peer-link port-channel, and no shutdown.",
+    "The inter-peer bundle is Port-Channel100. The downstream bundle is Port-Channel10; they serve different roles.",
+    "Assign mlag 10 in the downstream port-channel interface. Use the allowed VLAN add command to preserve the existing VLAN.",
+    "show interfaces trunk and show running-config help verify preserved settings. In this simulator, show mlag is a configuration summary, not a negotiated peer status."
+  ],
+  "setup_commands": [
+    "enable",
+    "configure terminal",
+    "hostname DIST-A",
+    "vlan 10",
+    "name STAFF",
+    "exit",
+    "vlan 20",
+    "name STUDENTS",
+    "exit",
+    "vlan 4094",
+    "name MLAG_PEERING",
+    "exit",
+    "interface Ethernet47-48",
+    "channel-group 100 mode active",
+    "no shutdown",
+    "exit",
+    "interface Port-Channel100",
+    "description Peer-link-to-DIST-B",
+    "switchport mode trunk",
+    "switchport trunk allowed vlan 10,20,4094",
+    "no shutdown",
+    "exit",
+    "interface Vlan4094",
+    "ip address 10.255.255.1/30",
+    "no shutdown",
+    "exit",
+    "interface Ethernet1",
+    "channel-group 10 mode active",
+    "no shutdown",
+    "exit",
+    "interface Port-Channel10",
+    "description Downstream-to-ACCESS-1",
+    "switchport mode trunk",
+    "switchport trunk allowed vlan 10",
+    "mlag 99",
+    "no shutdown",
+    "exit",
+    "mlag configuration",
+    "domain-id OLD-CAMPUS",
+    "local-interface vlan 4094",
+    "peer-address 10.255.255.9",
+    "peer-link port-channel 10",
+    "shutdown",
+    "end",
+    "disable"
+  ],
+  "checks": [
+    {
+      "type": "mlag_attribute",
+      "attribute": "domain_id",
+      "equals": "CAMPUS",
+      "label": "MLAG domain matches DIST-B: CAMPUS"
+    },
+    {
+      "type": "mlag_attribute",
+      "attribute": "local_interface",
+      "equals": "Vlan4094",
+      "label": "MLAG local interface remains Vlan4094"
+    },
+    {
+      "type": "mlag_attribute",
+      "attribute": "peer_address",
+      "equals": "10.255.255.2",
+      "label": "MLAG peer address is DIST-B: 10.255.255.2"
+    },
+    {
+      "type": "mlag_attribute",
+      "attribute": "peer_link",
+      "equals": "Port-Channel100",
+      "label": "MLAG peer link is Port-Channel100"
+    },
+    {
+      "type": "mlag_attribute",
+      "attribute": "shutdown",
+      "equals": false,
+      "label": "MLAG is administratively enabled"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Port-Channel10",
+      "attribute": "switchport_mode",
+      "equals": "trunk",
+      "label": "Port-Channel10 remains a trunk"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Port-Channel10",
+      "attribute": "allowed_vlans",
+      "equals": [
+        10,
+        20
+      ],
+      "label": "Port-Channel10 carries exactly VLANs 10,20"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Port-Channel10",
+      "attribute": "admin_up",
+      "equals": true,
+      "label": "Port-Channel10 remains administratively enabled"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Port-Channel100",
+      "attribute": "switchport_mode",
+      "equals": "trunk",
+      "label": "Port-Channel100 remains a trunk"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Port-Channel100",
+      "attribute": "allowed_vlans",
+      "equals": [
+        10,
+        20,
+        4094
+      ],
+      "label": "Port-Channel100 carries exactly VLANs 10,20,4094"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Port-Channel100",
+      "attribute": "admin_up",
+      "equals": true,
+      "label": "Port-Channel100 remains administratively enabled"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Port-Channel10",
+      "attribute": "mlag_id",
+      "equals": 10,
+      "label": "Downstream Port-Channel10 uses MLAG ID 10"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Port-Channel100",
+      "attribute": "mlag_id",
+      "equals": null,
+      "label": "Peer-link Port-Channel100 has no downstream MLAG ID"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Vlan4094",
+      "attribute": "ipv4_addresses",
+      "equals": [
+        "10.255.255.1/30"
+      ],
+      "label": "Local peering SVI retains 10.255.255.1/30"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Vlan4094",
+      "attribute": "admin_up",
+      "equals": true,
+      "label": "Peering SVI remains administratively enabled"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Ethernet47",
+      "attribute": "channel_group",
+      "equals": 100,
+      "label": "Ethernet47 remains in channel-group 100"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Ethernet47",
+      "attribute": "channel_mode",
+      "equals": "active",
+      "label": "Ethernet47 retains LACP active configuration"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Ethernet47",
+      "attribute": "admin_up",
+      "equals": true,
+      "label": "Ethernet47 remains administratively enabled"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Ethernet48",
+      "attribute": "channel_group",
+      "equals": 100,
+      "label": "Ethernet48 remains in channel-group 100"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Ethernet48",
+      "attribute": "channel_mode",
+      "equals": "active",
+      "label": "Ethernet48 retains LACP active configuration"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Ethernet48",
+      "attribute": "admin_up",
+      "equals": true,
+      "label": "Ethernet48 remains administratively enabled"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Ethernet1",
+      "attribute": "channel_group",
+      "equals": 10,
+      "label": "Ethernet1 remains in channel-group 10"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Ethernet1",
+      "attribute": "channel_mode",
+      "equals": "active",
+      "label": "Ethernet1 retains LACP active configuration"
+    },
+    {
+      "type": "interface_attribute",
+      "interface": "Ethernet1",
+      "attribute": "admin_up",
+      "equals": true,
+      "label": "Ethernet1 remains administratively enabled"
+    },
+    {
+      "type": "vlan_exists",
+      "vlan": 10,
+      "label": "VLAN 10 still exists"
+    },
+    {
+      "type": "vlan_exists",
+      "vlan": 20,
+      "label": "VLAN 20 still exists"
+    },
+    {
+      "type": "vlan_exists",
+      "vlan": 4094,
+      "label": "VLAN 4094 still exists"
+    }
+  ],
+  "sources": [
+    {
+      "title": "Arista EOS MLAG configuration and concepts",
+      "url": "https://www.arista.com/en/um-eos/eos-multi-chassis-link-aggregation"
+    }
+  ]
+}

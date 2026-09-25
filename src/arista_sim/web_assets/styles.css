@@ -267,3 +267,17 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
   .command-chip { grid-template-columns: 1fr; gap: 5px; }
   .lab-actions { grid-template-columns: 1fr; }
 }
+
+.study-browser { grid-column: 1 / -1; padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
+.study-browser > .lab-select { max-width: 420px; }
+.study-browser p { color: var(--muted); line-height: 1.5; }
+.study-topics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 14px; }
+.study-topic { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 10px; }
+.study-topic h3 { margin: 0 0 8px; font-size: 1rem; }
+.study-topic p, .study-checkpoint { font-size: .85rem; }
+.study-launch { display: block; width: 100%; margin: 8px 0; text-align: left; }
+.study-checkpoint { padding: 12px 0; border-top: 1px solid var(--line); }
+.study-checkpoint summary { cursor: pointer; color: var(--amber); line-height: 1.5; }
+.study-sources a { display: inline-block; color: var(--cyan); margin-right: 14px; }
+.study-note { font-size: .8rem; }
+@media (max-width: 900px) { .study-browser { order: -2; } }

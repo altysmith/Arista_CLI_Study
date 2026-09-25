@@ -1,0 +1,439 @@
+[
+  {
+    "id": "network-admin-prep",
+    "title": "Network Admin Prep",
+    "description": "Build confidence before your first network administration role. Work through each topic, explain the checkpoints in your own words, then complete the individual practices.",
+    "topics": [
+      {
+        "title": "Arista and Cisco router and switch CLIs",
+        "description": "Recognize command modes, inspect configuration, and plan safe changes. The terminal below simulates Arista EOS; Cisco IOS / IOS XE practice here is a study checkpoint, not a Cisco emulator.",
+        "labs": [],
+        "checkpoints": [
+          {
+            "question": "How do you move from user EXEC to privileged EXEC, enter configuration mode, and return to privileged EXEC?",
+            "answer": "On EOS and IOS / IOS XE, use enable, configure terminal, and end. The prompt changes from > to # to (config)#. Interface names and supported commands depend on the platform."
+          },
+          {
+            "question": "What should you inspect before changing a router or switch, and how do you preserve the configuration?",
+            "answer": "Inspect the running configuration and relevant interface state first. Review the change, then copy running-config startup-config. A router interface may use an IP address directly; access and trunk switchport commands apply to Layer 2 switching interfaces."
+          }
+        ]
+      },
+      {
+        "title": "Layer 2 Switching",
+        "description": "Trace a frame across access switches and trunks. Use the campus consoles and host pings to gather evidence.",
+        "labs": [
+          "campus-access-ticket",
+          "campus-trunk-ticket"
+        ],
+        "checkpoints": [
+          {
+            "question": "What does a switch learn from an incoming frame, and how does it forward an unknown destination?",
+            "answer": "It learns the source MAC address on the incoming port in that VLAN. An unknown unicast is flooded to eligible forwarding ports in the same VLAN, excluding the incoming port. Different VLANs require Layer 3 forwarding to communicate."
+          }
+        ]
+      },
+      {
+        "title": "Configuring VLANs on access ports",
+        "description": "Create the VLAN, assign the correct access port, and verify the resulting configuration.",
+        "labs": [
+          "access-vlan-basics"
+        ],
+        "checkpoints": [
+          {
+            "question": "Is creating a VLAN enough to move an endpoint into it?",
+            "answer": "No. Configure the endpoint interface as an access port and assign its access VLAN. Verify the VLAN exists, the port is enabled, and its access VLAN is correct."
+          }
+        ]
+      },
+      {
+        "title": "Adding VLANs to existing trunks",
+        "description": "Extend an allowed list while preserving existing traffic, then check both ends.",
+        "labs": [
+          "trunk-add-vlan",
+          "campus-trunk-ticket"
+        ],
+        "checkpoints": [
+          {
+            "question": "A trunk allows VLANs 10 and 20. How do you add VLAN 30 without replacing them?",
+            "answer": "In interface configuration mode, use switchport trunk allowed vlan add 30. Verify that 10, 20, and 30 remain allowed and that the VLAN exists on the switches carrying it. Check the remote end too."
+          }
+        ]
+      },
+      {
+        "title": "Basic Arista MLAG concepts",
+        "description": "Repair a distribution switch against the documented peer settings, then review the two-peer design. The lab grades local configuration; MLAG forwarding and failover are not simulated.",
+        "labs": [
+          "mlag-campus-repair"
+        ],
+        "checkpoints": [
+          {
+            "question": "What does MLAG allow a downstream device to do?",
+            "answer": "Build a link aggregation group with links to two cooperating Arista switches. The switches coordinate as MLAG peers while remaining separately managed devices."
+          },
+          {
+            "question": "What are the peer link, local interface, peer address, and MLAG ID used for?",
+            "answer": "The peer link connects the peers. The local interface and peer address identify the peering endpoints. Matching MLAG IDs associate the downstream port channels across the peers; they are not the peer-link port channel number."
+          },
+          {
+            "question": "Before declaring a pair healthy, what would you verify?",
+            "answer": "Inspect show mlag, peer connectivity, peer-link state, configuration consistency, and downstream port-channel membership. Real failover testing needs an appropriate lab; a configured command alone does not prove redundancy works."
+          }
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "title": "Arista MLAG guide",
+        "url": "https://www.arista.com/en/um-eos/eos-multi-chassis-link-aggregation"
+      },
+      {
+        "title": "Cisco IOS XE VLAN trunk guide",
+        "url": "https://www.cisco.com/c/en/us/td/docs/switches/lan/c9000/lyr2-fwd/vlan/vlan-configuration-guide/configure-vlan-trunks.html"
+      }
+    ]
+  },
+  {
+    "id": "l1-certification-lab-kit",
+    "title": "L1 Certification Study Lab Kit",
+    "description": "A practical, repeatable EOS study route for entry-level certification preparation. Start with command workflow, then build and verify Layer 2 configurations before working through multi-switch tickets. This is independent practice material, not an official certification exam or emulator.",
+    "topics": [
+      {
+        "title": "1. Console workflow and verification habits",
+        "description": "Use the EOS-style terminal deliberately: inspect before changing anything, make one controlled change at a time, and verify the resulting state. The simulator is EOS-only; Cisco material elsewhere is conceptual reference, not terminal practice.",
+        "labs": [],
+        "checkpoints": [
+          {
+            "question": "What is a safe default workflow before and after a configuration change?",
+            "answer": "Inspect the current running configuration and relevant show output, state the intended change, make the smallest necessary change, then verify interface, VLAN, trunk, or protocol state. Save only after the result is understood and reviewed."
+          },
+          {
+            "question": "Which command modes should you recognize for these labs?",
+            "answer": "Use enable for privileged EXEC, configure terminal for global configuration, interface or vlan to enter a specific configuration context, end to return to privileged EXEC, and show commands to verify state."
+          }
+        ]
+      },
+      {
+        "title": "2. VLAN and access-port configuration",
+        "description": "Create a user VLAN, name it, place an endpoint-facing port in the correct access VLAN, and verify administrative state.",
+        "labs": [
+          "access-vlan-basics"
+        ],
+        "checkpoints": [
+          {
+            "question": "What three things must be true for an endpoint to be placed in a user VLAN?",
+            "answer": "The VLAN must exist, the endpoint interface must be an access port assigned to that VLAN, and the interface must be administratively enabled."
+          }
+        ]
+      },
+      {
+        "title": "3. Trunk VLAN preservation",
+        "description": "Extend an existing trunk safely. The goal is to add the required VLAN while retaining the VLANs that already carry production traffic.",
+        "labs": [
+          "trunk-add-vlan"
+        ],
+        "checkpoints": [
+          {
+            "question": "Why is switchport trunk allowed vlan add safer than replacing the allowed list during a focused change?",
+            "answer": "The add form preserves the VLANs already allowed on the trunk. Replacing the list can unintentionally remove live VLANs and interrupt unrelated users."
+          }
+        ]
+      },
+      {
+        "title": "4. Layer 2 evidence and fault isolation",
+        "description": "Use host pings, LLDP, MAC learning, and trunk output to locate a single fault in a three-switch campus while preserving working traffic and the management VLAN.",
+        "labs": [
+          "campus-access-ticket",
+          "campus-trunk-ticket"
+        ],
+        "checkpoints": [
+          {
+            "question": "How do LLDP, the MAC address table, and a host ping complement one another?",
+            "answer": "LLDP identifies neighboring switches and physical paths, host pings establish the observed connectivity symptom, and the MAC address table shows where the switch learned source MAC addresses in each VLAN. Together they narrow the fault without guessing."
+          }
+        ]
+      },
+      {
+        "title": "5. LACP and MLAG configuration literacy",
+        "description": "Read a distribution-switch handoff, distinguish the peer link from a downstream port channel, and repair local MLAG settings while preserving the required VLANs and LACP members.",
+        "labs": [
+          "mlag-campus-repair"
+        ],
+        "checkpoints": [
+          {
+            "question": "What is the difference between an MLAG peer link and a downstream MLAG port channel?",
+            "answer": "The peer link connects the two MLAG peers. A downstream MLAG port channel connects a dual-attached device to the pair and uses a matching MLAG ID across the peers. Their port-channel numbers and roles are different."
+          },
+          {
+            "question": "What does a configured MLAG summary not prove in this simulator?",
+            "answer": "It does not prove peer reachability, negotiation, forwarding behavior, or failover. Those require a real two-peer topology and appropriate operational testing."
+          }
+        ]
+      },
+      {
+        "title": "6. Timed review loop",
+        "description": "Repeat the labs without hints. For each one, name the symptom, collect two independent pieces of evidence, make the smallest repair, and explain what you preserved before checking the grader.",
+        "labs": [
+          "access-vlan-basics",
+          "trunk-add-vlan",
+          "campus-access-ticket",
+          "campus-trunk-ticket",
+          "mlag-campus-repair"
+        ],
+        "checkpoints": [
+          {
+            "question": "What should you record after a failed attempt?",
+            "answer": "Record the symptom, the verification command and output that changed your hypothesis, the configuration change made, and the final check. Re-run the lab from reset and solve it using that evidence rather than memorizing a command sequence."
+          }
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "title": "Arista EOS User Manual",
+        "url": "https://www.arista.com/en/um-eos"
+      },
+      {
+        "title": "Arista EOS MLAG guide",
+        "url": "https://www.arista.com/en/um-eos/eos-multi-chassis-link-aggregation"
+      }
+    ]
+  },
+  {
+    "id": "l1-network-engineering-fundamentals",
+    "title": "L1 · Network Engineering Fundamentals",
+    "description": "Study the end-to-end network mental model first: media and Ethernet, addressing and local delivery, then core services and transport. Use this as the foundation for every later troubleshooting decision.",
+    "topics": [
+      {
+        "title": "1. Packet journey and encapsulation",
+        "description": "Explain which layer is responsible for a symptom, what each device does to a frame or packet, and what stays end-to-end versus what changes at each router hop.",
+        "labs": [],
+        "checkpoints": [
+          {"question": "What normally changes at a routed hop, and what normally stays end-to-end?", "answer": "The incoming Layer 2 frame is removed and a new frame is built for the next link, so source and destination MAC addresses change. The IP source and destination normally remain end-to-end; NAT is an important exception."},
+          {"question": "What is the first troubleshooting question for a connectivity symptom?", "answer": "Identify the lowest layer that can explain the symptom. Confirm physical/link state before VLAN or IP assumptions, then verify local delivery, routing, and finally the application service."}
+        ]
+      },
+      {
+        "title": "2. Physical media and Ethernet forwarding",
+        "description": "Know copper, fiber, optics, PoE, Ethernet framing, MAC addressing, collision versus broadcast domains, and how a switch learns and forwards frames.",
+        "labs": ["campus-access-ticket"],
+        "checkpoints": [
+          {"question": "How does a switch handle a known unicast versus an unknown unicast?", "answer": "It forwards a known destination only to the learned egress port in the matching VLAN. It floods an unknown unicast to eligible forwarding ports in that VLAN except the ingress port, while learning the source MAC on ingress."},
+          {"question": "Why is flooding not the same thing as broadcasting?", "answer": "Broadcast is addressed to the broadcast MAC address. Flooding is the forwarding behavior a switch uses when it does not know a destination; it can apply to unknown unicast and to certain multicast handling as well."}
+        ]
+      },
+      {
+        "title": "3. IPv4 addressing and local-versus-remote delivery",
+        "description": "Practice CIDR reasoning, network and host bits, private space, default gateways, ARP for the local next hop, and deciding whether a destination is local or remote.",
+        "labs": [],
+        "checkpoints": [
+          {"question": "What does ARP resolve when a host sends traffic to a remote network?", "answer": "ARP resolves the MAC address of the local next hop, normally the default gateway, not the MAC address of the remote destination host."},
+          {"question": "What is the useful order for determining whether a destination is local?", "answer": "Apply the local IP address and subnet mask to both addresses. If the network portions match, send directly after ARP; otherwise send to the default gateway after resolving its MAC address."}
+        ]
+      },
+      {
+        "title": "4. Essential services and transport",
+        "description": "Connect DHCP, DNS, ARP, ICMP, NTP, TCP, UDP, and well-known ports to observable symptoms rather than memorizing isolated definitions.",
+        "labs": [],
+        "checkpoints": [
+          {"question": "If a remote IP works but a hostname fails, where should investigation start?", "answer": "Start with DNS resolution: the configured resolver, reachability to it, and the name record. Basic routing is already supported by the successful IP test."},
+          {"question": "What does the TCP three-way handshake establish?", "answer": "It establishes bidirectional connection state and synchronizes sequence numbers before application data is exchanged. UDP has no equivalent connection setup."}
+        ]
+      }
+    ],
+    "sources": []
+  },
+  {
+    "id": "l1-eos-fundamentals",
+    "title": "L1 · Arista EOS Fundamentals",
+    "description": "Build operational confidence with EOS architecture, CLI navigation, configuration state, interface verification, and safe change methods. The terminal is a simulator, so unsupported platform behavior remains conceptual.",
+    "topics": [
+      {
+        "title": "1. EOS architecture and operating model",
+        "description": "Learn the state-oriented EOS design, SysDB, independent agents, control versus data plane, Linux foundation, HAL, and the relationship of physical, vEOS, and cEOS forms.",
+        "labs": [],
+        "checkpoints": [
+          {"question": "Why does EOS shared state matter operationally?", "answer": "EOS agents use shared system state, so a change or event can be reflected consistently across the relevant processes. This supports state-based verification instead of treating each command as an isolated setting."},
+          {"question": "What is the control-plane versus data-plane distinction?", "answer": "The control plane builds and maintains operational decisions such as routing and protocol state. The data plane forwards traffic using those decisions."}
+        ]
+      },
+      {
+        "title": "2. CLI navigation and discovery",
+        "description": "Use EXEC, privileged EXEC, global configuration, interface configuration, contextual help, completion, abbreviations, history, and filtering deliberately.",
+        "labs": ["access-vlan-basics"],
+        "checkpoints": [
+          {"question": "What command sequence moves from user EXEC to interface configuration and then safely back to privileged EXEC?", "answer": "Use enable, configure terminal, then interface <name>. Use end to return directly to privileged EXEC. Verify the prompt at each stage rather than relying only on command memory."},
+          {"question": "What should you do with an invalid or incomplete command?", "answer": "Read the parser feedback, use context-sensitive help or completion to discover valid syntax, and confirm that the failed command did not alter state before trying again."}
+        ]
+      },
+      {
+        "title": "3. Configuration lifecycle and verification",
+        "description": "Distinguish running and startup configuration, inspect state before changes, remove or default configuration safely, and verify exactly what the device is using.",
+        "labs": ["trunk-add-vlan"],
+        "checkpoints": [
+          {"question": "Why can a correct change disappear after a reload?", "answer": "A change affects running configuration until it is saved to startup configuration. Verify both when persistence matters; running and startup state are separate."},
+          {"question": "What is a safe minimum change workflow?", "answer": "Inspect current state, define the smallest desired change, apply it, inspect the operational result and relevant running configuration, then save only when the result is correct."}
+        ]
+      },
+      {
+        "title": "4. Interfaces, management, and safe remote changes",
+        "description": "Practice interface naming and state interpretation, out-of-band management, management VRFs, checkpoints, configuration sessions, commits, aborts, and timed commits.",
+        "labs": [],
+        "checkpoints": [
+          {"question": "What distinction should you make when an interface is not usable?", "answer": "Separate administrative state from operational link state. An enabled interface can still be down because of physical media, the far end, speed, or another link condition."},
+          {"question": "Why are checkpoints or a timed commit valuable for remote work?", "answer": "They create a recovery path if a management-affecting change disconnects you. A timed commit limits the risk of being locked out by reverting an unconfirmed change."}
+        ]
+      }
+    ],
+    "sources": []
+  },
+  {
+    "id": "l1-layer2-switching-fundamentals",
+    "title": "L1 · Layer 2 Switching Fundamentals",
+    "description": "Move from discovery to VLANs, trunks, inter-VLAN routing, STP, LACP, and MLAG. Solve each ticket with verification evidence and preserve traffic that is already working.",
+    "topics": [
+      {
+        "title": "1. Neighbor discovery and evidence gathering",
+        "description": "Use LLDP to identify direct neighbors and build a topology, then correlate it with MAC learning and end-host reachability tests.",
+        "labs": ["campus-access-ticket", "campus-trunk-ticket"],
+        "checkpoints": [
+          {"question": "What can LLDP prove, and what can it not prove?", "answer": "LLDP identifies directly connected neighbors and their port relationship. It does not prove end-to-end connectivity, VLAN continuity, forwarding health, or a complete multi-hop path."},
+          {"question": "What is the first useful evidence set for a same-VLAN outage across switches?", "answer": "Test the affected hosts, map the uplinks with LLDP, compare VLAN and trunk state on both ends, and generate then inspect MAC learning to see how far the traffic reaches."}
+        ]
+      },
+      {
+        "title": "2. VLANs, access ports, and trunks",
+        "description": "Create VLANs, assign access ports, distinguish VLAN from subnet, understand 802.1Q and allowed VLAN lists, and avoid replacing working trunk configuration.",
+        "labs": ["access-vlan-basics", "trunk-add-vlan"],
+        "checkpoints": [
+          {"question": "Why is creating a VLAN alone not enough to move an endpoint?", "answer": "The endpoint interface must also operate as an access port assigned to that VLAN and be enabled. The VLAN definition alone does not change the port's membership."},
+          {"question": "How do you add one VLAN to a working trunk without removing existing traffic?", "answer": "Use the allowed-VLAN add operation, then verify both ends of the trunk. Replacing an allowed list can remove unrelated VLANs."}
+        ]
+      },
+      {
+        "title": "3. Inter-VLAN routing and spanning tree",
+        "description": "Explain why different VLANs require Layer 3 forwarding, compare router-on-a-stick and SVIs, and reason through STP roles, states, root selection, and expected blocked paths.",
+        "labs": [],
+        "checkpoints": [
+          {"question": "Why can hosts in different VLANs not communicate through Layer 2 switching alone?", "answer": "Each VLAN is a separate Layer 2 broadcast domain. A router or Layer 3 switch interface is required to forward between their IP subnets."},
+          {"question": "Does a discarding STP port automatically indicate a fault?", "answer": "No. In a redundant topology, STP intentionally places some ports in a non-forwarding state to prevent loops. Verify the root bridge, port role, and topology before treating it as an outage."}
+        ]
+      },
+      {
+        "title": "4. LACP and MLAG",
+        "description": "Understand member compatibility, LACP active/passive behavior, logical port channels, MLAG peer components, and the difference between a configured state and a proven healthy topology.",
+        "labs": ["mlag-campus-repair"],
+        "checkpoints": [
+          {"question": "Which LACP mode pairing cannot form a negotiated bundle?", "answer": "Passive/passive cannot initiate LACP negotiation. At least one side must be active for an LACP bundle to form."},
+          {"question": "What does a configured MLAG summary not prove in this simulator?", "answer": "It does not prove peer reachability, LACP negotiation, forwarding, or failover. Those require a real two-peer topology and operational testing."}
+        ]
+      }
+    ],
+    "sources": []
+  },
+  {
+    "id": "l1-layer3-routing-fundamentals",
+    "title": "L1 · Layer 3 Routing Fundamentals",
+    "description": "Study packet forwarding, route selection, static and dynamic routing, routed-path troubleshooting, and the Internet/WAN/NAT boundaries. Use the EOS terminal for supported command practice and treat topology-dependent protocol behavior as conceptual.",
+    "topics": [
+      {
+        "title": "1. Forwarding and route selection",
+        "description": "Master connected versus remote routes, longest-prefix match, RIB versus FIB, administrative distance, metric, and ECMP flow-based hashing.",
+        "labs": [],
+        "checkpoints": [
+          {"question": "What is the first rule a router uses to select between matching routes?", "answer": "Choose the most specific matching prefix first. Administrative distance and metric compare routes only after the relevant prefix choice and route-source rules apply."},
+          {"question": "What is the difference between the RIB and FIB?", "answer": "The RIB is the routing information base containing learned and selected route information. The FIB is the forwarding structure derived for packet forwarding."}
+        ]
+      },
+      {
+        "title": "2. Static routing and return paths",
+        "description": "Configure and verify next-hop, exit-interface, and default routes; then diagnose missing routes, wrong next hops, and missing return routing.",
+        "labs": [],
+        "checkpoints": [
+          {"question": "Why is a route on the forward device not sufficient for end-to-end reachability?", "answer": "The return path must also exist. A successful forward lookup cannot help if the reply has no route back to the original source."},
+          {"question": "What should a static-route troubleshooting workflow verify?", "answer": "Verify the destination prefix and mask, selected next hop or exit interface, reachability of that next hop, the installed route, a test to the destination, and the return route."}
+        ]
+      },
+      {
+        "title": "3. Dynamic routing: RIP and OSPF",
+        "description": "Know RIP's distance-vector behavior and loop prevention, then focus on OSPF areas, neighbor and adjacency states, network types, DR/BDR, costs, and the verification sequence.",
+        "labs": [],
+        "checkpoints": [
+          {"question": "Why can an OSPF neighbor show Two-Way and still be healthy?", "answer": "On a broadcast network, DROTHER routers commonly remain Two-Way with one another while each forms a Full adjacency with the DR and BDR. Interpret the state in the context of the network type and role."},
+          {"question": "What is the practical order for OSPF troubleshooting?", "answer": "Verify physical and Layer 3 interface state, OSPF participation, neighbor state, matching interface parameters, learned routes, reachability to the neighbor and remote destination, then the return path."}
+        ]
+      },
+      {
+        "title": "4. Internet edge, NAT, WAN, and VPN",
+        "description": "Separate Internet from private WAN services, public from private addressing, routing from NAT/PAT, underlay from overlay, and encryption from private connectivity.",
+        "labs": [],
+        "checkpoints": [
+          {"question": "Why is NAT not a firewall?", "answer": "NAT translates addressing; it does not by itself express or enforce a security policy. Traffic control needs an appropriate firewall or ACL policy."},
+          {"question": "What does private WAN mean, and what does it not mean?", "answer": "It means the transport is not the public Internet service. It does not automatically mean the traffic is encrypted or that it can reach the Internet without separate routing and policy."}
+        ]
+      }
+    ],
+    "sources": []
+  },
+  {
+    "id": "l1-advanced-networking-concepts",
+    "title": "L1 · Advanced Networking Concepts",
+    "description": "Complete the L1 path with IPv6, QoS, and access-layer/management security. Prioritize workflows and verification commands over memorizing every syntax variation.",
+    "topics": [
+      {
+        "title": "1. IPv6 addressing and neighbor discovery",
+        "description": "Work from address format and compression to prefixes, address types, interface IDs/EUI-64, multicast, anycast, NDP, DAD, and solicited-node multicast.",
+        "labs": [],
+        "checkpoints": [
+          {"question": "What is the critical IPv6 compression rule?", "answer": "Double-colon compression may replace one contiguous run of all-zero hextets only once in an address. Leading zeros can be removed from individual hextets."},
+          {"question": "What does IPv6 Neighbor Discovery replace or provide?", "answer": "NDP uses ICMPv6 and multicast for functions such as neighbor resolution, router discovery, duplicate address detection, and related local-link communication that IPv4 commonly associates with ARP and router discovery."}
+        ]
+      },
+      {
+        "title": "2. QoS classification to egress",
+        "description": "Trace traffic through classification, marking, a trust boundary, CoS/DSCP mapping, traffic classes, queues, policy maps, policing, shaping, and verification counters.",
+        "labs": [],
+        "checkpoints": [
+          {"question": "What is the difference between classification and marking?", "answer": "Classification identifies traffic based on characteristics such as addresses, protocol, ports, or existing markings. Marking writes or rewrites a traffic marking such as DSCP or CoS."},
+          {"question": "How do policing and shaping differ?", "answer": "Policing enforces a rate by dropping or remarking traffic that exceeds it. Shaping buffers and schedules traffic to smooth its transmission rate, trading delay for a controlled output rate."}
+        ]
+      },
+      {
+        "title": "3. ACLs and management security",
+        "description": "Learn ACL matching order and implicit deny, direction and placement, interface versus service ACLs, verification, AAA, TACACS+/RADIUS, fallback, and secure management access.",
+        "labs": [],
+        "checkpoints": [
+          {"question": "What happens when traffic reaches the end of an ACL without a matching permit?", "answer": "The implicit deny applies. A missing explicit permit can therefore block all traffic that did not match an earlier permitted entry."},
+          {"question": "How do authentication, authorization, and accounting differ?", "answer": "Authentication verifies identity, authorization determines permitted actions, and accounting records activity. Treat them as separate controls when troubleshooting access."}
+        ]
+      },
+      {
+        "title": "4. Access-layer source validation",
+        "description": "Connect DHCP snooping trusted ports and bindings to IP Source Guard, ARP inspection, static bindings, IP locking, and a disciplined workflow for legitimate traffic that is unexpectedly dropped.",
+        "labs": [],
+        "checkpoints": [
+          {"question": "Why must DHCP-server-facing paths be trusted in a DHCP snooping design?", "answer": "Valid server messages must traverse trusted ports. If a legitimate server-facing path is untrusted, snooping can block offers or acknowledgements and clients will fail to obtain addresses."},
+          {"question": "What relationship links DHCP snooping, IP Source Guard, and ARP inspection?", "answer": "DHCP snooping can create a trusted binding table. IP Source Guard and ARP inspection can use that binding information to validate source IP/MAC and ARP claims at the access layer."}
+        ]
+      }
+    ],
+    "sources": []
+  },
+  {
+    "id": "campus-troubleshooting",
+    "title": "Campus Troubleshooting",
+    "description": "Individual multi-switch tickets for diagnosing access VLAN and trunk problems.",
+    "topics": [
+      {
+        "title": "Campus support tickets",
+        "description": "Inspect the topology, find the fault, repair it, and verify host connectivity.",
+        "labs": [
+          "campus-access-ticket",
+          "campus-trunk-ticket"
+        ],
+        "checkpoints": []
+      }
+    ],
+    "sources": []
+  }
+]

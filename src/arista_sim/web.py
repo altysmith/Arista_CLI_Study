@@ -15,7 +15,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from .cli.session import Session
-from .labs import get_lab, grade_lab, load_labs, public_lab
+from .labs import get_lab, grade_lab, load_labs, load_sections, public_lab
 from .reference import load_command_reference
 from .persistence import ProgressDatabase, dump_cli, restore_cli
 from .campus import Campus
@@ -113,7 +113,7 @@ class LabApplication:
         self.sessions = SessionStore(data_path)
 
     def labs(self) -> dict[str, Any]:
-        return {"labs": [public_lab(lab) for lab in load_labs()]}
+        return {"labs": [public_lab(lab) for lab in load_labs()], "sections": load_sections()}
 
     def command_reference(self) -> dict[str, Any]:
         return load_command_reference()

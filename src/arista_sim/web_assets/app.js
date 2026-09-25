@@ -5,6 +5,7 @@ const state = {
   historyIndex: 0,
   draft: "",
   labs: [],
+  sections: [],
   labId: null,
   reference: null,
   busy: false,
@@ -131,6 +132,8 @@ async function initialize() {
   try {
     const [catalog, reference] = await Promise.all([api("/api/labs"), api("/api/reference")]);
     state.labs = catalog.labs;
+    state.sections = catalog.sections || [];
+    initializeSections();
     state.reference = reference;
     labSelect.replaceChildren(...state.labs.map((lab) => {
       const option = document.createElement("option");
@@ -379,7 +382,7 @@ document.querySelectorAll("[data-device]").forEach(button => button.addEventList
     renderCampus(result.campus, result.active);
     appendLine(`Console: ${result.active}`, "welcome");
     input.disabled = result.closed;
-    input.focus();
+    input.focus({ preventScroll: true });
   } catch (error) { appendLine(error.message, "error-line"); input.disabled = false; }
   finally { state.busy = false; labSelect.disabled = false; }
 }));
@@ -396,5 +399,69 @@ document.querySelector("#ping-form").addEventListener("submit", async event => {
   } catch (error) { document.querySelector("#ping-result").textContent = error.message; }
   finally { state.busy = false; labSelect.disabled = false; }
 });
+
+function initializeSections() {
+  const select = document.querySelector("#section-select");
+  select.replaceChildren(...state.sections.map(section => new Option(section.title, section.id)));
+  let saved;
+  try { saved = localStorage.getItem("arista-study-section"); } catch {}
+  if (state.sections.some(section => section.id === saved)) select.value = saved;
+  select.addEventListener("change", renderSection);
+  renderSection();
+}
+
+function renderSection() {
+  const id = document.querySelector("#section-select").value;
+  const section = state.sections.find(section => section.id === id);
+  if (!section) return;
+  try { localStorage.setItem("arista-study-section", id); } catch {}
+  document.querySelector("#study-title").textContent = section.title;
+  document.querySelector("#section-description").textContent = section.description;
+  document.querySelector("#section-topics").replaceChildren(...section.topics.map((topic, index) => {
+    const card = document.createElement("article");
+    card.className = "study-topic";
+    const title = document.createElement("h3");
+    title.textContent = (index + 1) + ". " + topic.title;
+    const description = document.createElement("p");
+    description.textContent = topic.description;
+    card.append(title, description);
+    for (const labId of topic.labs) {
+      const lab = state.labs.find(lab => lab.id === labId);
+      if (!lab) continue;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "secondary-button study-launch";
+      button.textContent = lab.title + " · " + lab.estimated_minutes + " min";
+      button.addEventListener("click", async () => {
+        if (state.busy) return;
+        await startSession(lab.id);
+        document.querySelector(".lab-card").scrollIntoView({behavior: "smooth", block: "start"});
+      });
+      card.append(button);
+    }
+    for (const checkpoint of topic.checkpoints || []) {
+      const details = document.createElement("details");
+      details.className = "study-checkpoint";
+      const summary = document.createElement("summary");
+      summary.textContent = checkpoint.question;
+      const answer = document.createElement("p");
+      answer.textContent = checkpoint.answer;
+      details.append(summary, answer);
+      card.append(details);
+    }
+    return card;
+  }));
+  const sources = document.querySelector("#section-sources");
+  sources.replaceChildren(document.createTextNode("Reference reading: "));
+  for (const source of section.sources || []) {
+    const link = document.createElement("a");
+    link.textContent = source.title;
+    link.href = source.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    sources.append(link, document.createTextNode(" "));
+  }
+  sources.hidden = !section.sources?.length;
+}
 
 initialize();

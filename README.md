@@ -92,3 +92,11 @@ python -m unittest discover -s tests -v
 ```
 
 See [docs/architecture.md](docs/architecture.md), [docs/authority.md](docs/authority.md), and [docs/compatibility.md](docs/compatibility.md) for design, evidence, and accuracy limits.
+
+## Study sections and future PDF labs
+
+The browser offers Network Admin Prep, an L1 Certification Study Lab Kit, five note-derived L1 domain sections, and Campus Troubleshooting while retaining the individual practice picker. The note-derived sections are Network Engineering Fundamentals, Arista EOS Fundamentals, Layer 2 Switching Fundamentals, Layer 3 Routing Fundamentals, and Advanced Networking Concepts. They turn the supplied master notes into focused recall checkpoints and link to supported EOS practice; the terminal does not claim to emulate every topology, protocol, or security feature in those notes. The L1 kit is independent practice material, not an official certification exam or emulator; it organizes EOS workflow, VLAN, trunk, campus fault-isolation, and local MLAG study into a repeatable route. Section choices are remembered on this browser; existing server lab saves keep their original IDs. Knowledge checkpoints reveal model answers and do not count as graded lab completions. The terminal remains EOS-only.
+
+Sections live in src/arista_sim/reference/sections.json. Each section has a stable id, title, description, topics, and sources. Each topic references existing lab IDs and optional question/answer checkpoints. A lab may appear in multiple sections without duplicating its progress.
+
+For future supplied PDFs, create a section or extend a topic, split the material into focused labs, and record the document title and page references in each lab brief/objectives. Add simulator checks only for supported behavior; label conceptual checkpoints separately. This is an authoring workflow, not an automatic PDF upload/import feature.

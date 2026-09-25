@@ -20,6 +20,15 @@
     </header>
 
     <main class="workspace">
+      <section class="study-browser" aria-labelledby="study-title">
+        <label class="lab-picker-label" for="section-select">Study section</label>
+        <select id="section-select" class="lab-select"></select>
+        <h2 id="study-title">Network Admin Prep</h2>
+        <p id="section-description"></p>
+        <div id="section-topics" class="study-topics"></div>
+        <p id="section-sources" class="study-sources"></p>
+        <p class="study-note">Future PDF study packs can be organized into sections with several focused labs. Share your PDFs in the task when ready.</p>
+      </section>
       <section id="campus-panel" class="campus-panel" aria-label="Campus topology" hidden>
         <div class="section-heading"><h2>College access network</h2><span>Fictional campus · Layer 2</span></div>
         <div class="topology">
@@ -58,7 +67,7 @@
         <div id="terminal-output" class="terminal-output" role="log" aria-live="polite" aria-label="Terminal output"></div>
         <form id="terminal-form" class="terminal-input-row" autocomplete="off">
           <label id="prompt" for="command-input">switch&gt;</label>
-          <input id="command-input" name="command" type="text" spellcheck="false" autocapitalize="none" aria-label="EOS command" autofocus>
+          <input id="command-input" name="command" type="text" spellcheck="false" autocapitalize="none" aria-label="EOS command">
         </form>
       </section>
 
