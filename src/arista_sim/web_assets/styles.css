@@ -294,6 +294,11 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .exercise-result { min-height: 1.5em; margin: 16px 0 0; line-height: 1.5; }
 .exercise-result.correct { color: var(--green); }
 .exercise-result.incorrect { color: var(--amber); }
+.mastery-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; margin-top: 16px; }
+.mastery-summary p { margin: 0; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: .76rem; }
+.mistake-review { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.mistake-review::before { content: "Recent mistakes"; color: var(--amber); font-size: .75rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.mistake-review p { margin: 8px 0 0; color: var(--muted); font-size: .78rem; }
 @media (max-width: 900px) { .study-browser { order: -2; } }
 @media (max-width: 560px) { .exercise-form { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .practice-picker { grid-template-columns: 1fr; } }

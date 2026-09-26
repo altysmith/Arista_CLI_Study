@@ -133,13 +133,14 @@ async function startSession(labId) {
 
 async function initialize() {
   try {
-    const [catalog, reference, exercise, exercises] = await Promise.all([api("/api/labs"), api("/api/reference"), api("/api/study-now"), api("/api/exercises")]);
+    const [catalog, reference, exercise, exercises, progress] = await Promise.all([api("/api/labs"), api("/api/reference"), api("/api/study-now"), api("/api/exercises"), api("/api/progress")]);
     state.labs = catalog.labs;
     state.sections = catalog.sections || [];
     initializeSections();
     state.reference = reference;
     state.exerciseChoices = exercises.exercises;
     document.querySelector("#practice-choice").replaceChildren(...state.exerciseChoices.map(choice => new Option(`${choice.title} · ${choice.mode}`, choice.id)));
+    renderProgress(progress);
     renderExercise(exercise);
     labSelect.replaceChildren(...state.labs.map((lab) => {
       const option = document.createElement("option");
@@ -305,6 +306,7 @@ document.querySelector("#exercise-form").addEventListener("submit", async event 
     result.className = `exercise-result ${attempt.correct ? "correct" : "incorrect"}`;
     result.textContent = `${attempt.correct ? "Correct." : "Not quite."} ${attempt.explanation} Mastery: ${attempt.progress.mastery}% (${attempt.progress.attempts} attempt${attempt.progress.attempts === 1 ? "" : "s"}).`;
     const next = await api("/api/study-now");
+    renderProgress(await api("/api/progress"));
     window.setTimeout(() => renderExercise(next), 900);
   } catch (error) {
     result.className = "exercise-result incorrect";
@@ -408,6 +410,23 @@ function renderCampus(campus, active) {
     select.value = previous || (id === "ping-source" ? "STAFF-A" : "STAFF-B");
   }
   document.querySelector("#host-arp").textContent = campus.hosts.map(h => `${h.id}: ${Object.entries(h.arp).map(([ip, mac]) => `${ip} → ${mac}`).join(", ") || "No learned entries"}`).join("\n");
+}
+
+function renderProgress(progress) {
+  const mastery = document.querySelector("#mastery-summary");
+  mastery.hidden = !progress.skills.length;
+  mastery.replaceChildren(...progress.skills.slice(0, 4).map(skill => {
+    const item = document.createElement("p");
+    item.textContent = `${skill.topic_id} · ${skill.mode}: ${skill.mastery}% (${skill.attempts} attempts)`;
+    return item;
+  }));
+  const mistakes = document.querySelector("#mistake-review");
+  mistakes.hidden = !progress.recent_mistakes.length;
+  mistakes.replaceChildren(...progress.recent_mistakes.slice(0, 4).map(mistake => {
+    const item = document.createElement("p");
+    item.textContent = `${mistake.topic_id} · ${mistake.mode}: ${mistake.error_tags.join(", ")}`;
+    return item;
+  }));
 }
 
 function renderExercise(exercise) {

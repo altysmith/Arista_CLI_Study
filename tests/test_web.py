@@ -50,6 +50,7 @@ class WebTests(unittest.TestCase):
         self.assertIn("text/html", content_type)
         self.assertIn(b"Arista CLI Lab", body)
         self.assertIn(b"Command reference", body)
+        self.assertIn(b"Practice a specific skill", body)
 
         status, _, body = self.request("/api/labs")
         catalog = json.loads(body)
