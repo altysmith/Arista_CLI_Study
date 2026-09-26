@@ -410,7 +410,7 @@
       {
         "title": "4. Access-layer source validation",
         "description": "Connect DHCP snooping trusted ports and bindings to IP Source Guard, ARP inspection, static bindings, IP locking, and a disciplined workflow for legitimate traffic that is unexpectedly dropped.",
-        "labs": ["dhcp-snooping-trust"],
+        "labs": ["dhcp-snooping-trust", "dhcp-snooping-trust-repair"],
         "checkpoints": [
           {"question": "Why must DHCP-server-facing paths be trusted in a DHCP snooping design?", "answer": "Valid server messages must traverse trusted ports. If a legitimate server-facing path is untrusted, snooping can block offers or acknowledgements and clients will fail to obtain addresses."},
           {"question": "What relationship links DHCP snooping, IP Source Guard, and ARP inspection?", "answer": "DHCP snooping can create a trusted binding table. IP Source Guard and ARP inspection can use that binding information to validate source IP/MAC and ARP claims at the access layer."}
