@@ -21,6 +21,7 @@ from .persistence import ProgressDatabase, dump_cli, restore_cli
 from .campus import Campus
 from .curriculum import load_curriculum
 from .exercises import choose_study_now, evaluate_attempt, exercise_choices
+from .exam import build_exam, public_exam, score_exam
 
 
 MAX_REQUEST_BYTES = 64 * 1024
@@ -137,6 +138,38 @@ class LabApplication:
 
     def exercises(self) -> dict[str, Any]:
         return {"exercises": exercise_choices()}
+
+    def exam(self) -> dict[str, Any]:
+        if not self.sessions.database:
+            return {"active": None}
+        active = self.sessions.database.active_exam()
+        if active:
+            return {"active": public_exam(active["questions"], active["started_at"], active["id"])}
+        return {"active": None}
+
+    def start_exam(self) -> dict[str, Any]:
+        if not self.sessions.database:
+            raise ValueError("Exam progress requires durable storage")
+        active = self.sessions.database.active_exam()
+        if active:
+            return public_exam(active["questions"], active["started_at"], active["id"])
+        exam_id = uuid.uuid4().hex
+        questions = build_exam()
+        started_at = self.sessions.database.create_exam(exam_id, questions)
+        return public_exam(questions, started_at, exam_id)
+
+    def submit_exam(self, exam_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        if not self.sessions.database:
+            raise ValueError("Exam progress requires durable storage")
+        answers = payload.get("answers")
+        if not isinstance(answers, list):
+            raise ValueError("Exam answers must be a list")
+        exam = self.sessions.database.exam(exam_id)
+        if exam["submitted_at"]:
+            return exam["results"]
+        result = score_exam(exam["questions"], answers)
+        self.sessions.database.submit_exam(exam_id, result)
+        return result
 
     def submit_attempt(self, exercise_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         if not self.sessions.database:
@@ -259,6 +292,9 @@ class LabRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/exercises":
             self._send_json(self.app.exercises())
             return
+        if path == "/api/exam":
+            self._send_json(self.app.exam())
+            return
         self._send_asset("index.html" if path == "/" else path.removeprefix("/"))
 
     def do_POST(self) -> None:
@@ -277,6 +313,16 @@ class LabRequestHandler(BaseHTTPRequestHandler):
             if path == "/api/sessions":
                 self._send_json(self.app.create_session(payload), HTTPStatus.CREATED)
                 return
+
+            if path == "/api/exam":
+                self._send_json(self.app.start_exam(), HTTPStatus.CREATED)
+                return
+
+            if path.startswith("/api/exams/") and path.endswith("/submit"):
+                parts = path.strip("/").split("/")
+                if len(parts) == 4:
+                    self._send_json(self.app.submit_exam(parts[2], payload))
+                    return
 
             if path.startswith("/api/exercises/") and path.endswith("/attempts"):
                 parts = path.strip("/").split("/")

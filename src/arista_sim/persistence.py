@@ -66,6 +66,7 @@ class ProgressDatabase:
             db.execute("CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, lab TEXT NOT NULL, state TEXT NOT NULL, updated TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
             db.execute("CREATE TABLE IF NOT EXISTS exercise_attempts (id INTEGER PRIMARY KEY, exercise_id TEXT NOT NULL, topic_id TEXT NOT NULL, mode TEXT NOT NULL, correct INTEGER NOT NULL, hints_used INTEGER NOT NULL DEFAULT 0, error_tags TEXT NOT NULL DEFAULT '[]', practiced TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
             db.execute("CREATE TABLE IF NOT EXISTS skill_mastery (topic_id TEXT NOT NULL, mode TEXT NOT NULL, mastery REAL NOT NULL, attempts INTEGER NOT NULL, correct_attempts INTEGER NOT NULL, recent_error_rate REAL NOT NULL, last_practiced_at TEXT NOT NULL, PRIMARY KEY(topic_id, mode))")
+            db.execute("CREATE TABLE IF NOT EXISTS exam_sessions (id TEXT PRIMARY KEY, questions TEXT NOT NULL, started TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, submitted TEXT, results TEXT)")
 
     @contextmanager
     def connect(self):
@@ -121,3 +122,28 @@ class ProgressDatabase:
             mastery = round(100 * effective_correct / attempts, 1)
             db.execute("INSERT INTO skill_mastery(topic_id,mode,mastery,attempts,correct_attempts,recent_error_rate,last_practiced_at) VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(topic_id,mode) DO UPDATE SET mastery=excluded.mastery,attempts=excluded.attempts,correct_attempts=excluded.correct_attempts,recent_error_rate=excluded.recent_error_rate,last_practiced_at=excluded.last_practiced_at", (topic_id, mode, mastery, attempts, correct_attempts, recent_error_rate))
         return {"topic_id": topic_id, "mode": mode, "mastery": mastery, "attempts": attempts, "correct_attempts": correct_attempts, "recent_error_rate": recent_error_rate}
+
+    def create_exam(self, exam_id, questions):
+        with self.connect() as db:
+            db.execute("INSERT INTO exam_sessions(id,questions) VALUES(?,?)", (exam_id, json.dumps(questions)))
+            started = db.execute("SELECT started FROM exam_sessions WHERE id=?", (exam_id,)).fetchone()[0]
+        return started
+
+    def active_exam(self):
+        with self.connect() as db:
+            row = db.execute("SELECT id,questions,started FROM exam_sessions WHERE submitted IS NULL ORDER BY started DESC LIMIT 1").fetchone()
+        return None if row is None else {"id": row[0], "questions": json.loads(row[1]), "started_at": row[2]}
+
+    def exam(self, exam_id):
+        with self.connect() as db:
+            row = db.execute("SELECT questions,started,submitted,results FROM exam_sessions WHERE id=?", (exam_id,)).fetchone()
+        if row is None:
+            raise KeyError("Exam not found")
+        return {"id": exam_id, "questions": json.loads(row[0]), "started_at": row[1], "submitted_at": row[2], "results": json.loads(row[3]) if row[3] else None}
+
+    def submit_exam(self, exam_id, results):
+        with self.connect() as db:
+            if db.execute("SELECT submitted FROM exam_sessions WHERE id=?", (exam_id,)).fetchone() is None:
+                raise KeyError("Exam not found")
+            db.execute("UPDATE exam_sessions SET submitted=CURRENT_TIMESTAMP,results=? WHERE id=? AND submitted IS NULL", (json.dumps(results), exam_id))
+        return self.exam(exam_id)

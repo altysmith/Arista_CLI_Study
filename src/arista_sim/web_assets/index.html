@@ -44,6 +44,15 @@
         <p id="exercise-result" class="exercise-result" role="status"></p>
         <div id="mastery-summary" class="mastery-summary" hidden></div>
         <div id="mistake-review" class="mistake-review" hidden></div>
+        <div class="exam-launch"><button id="exam-start" class="secondary-button" type="button">Start integrated exam</button><span>8 varied questions · no hints · saved until submitted</span></div>
+        <section id="exam-panel" class="exam-panel" hidden aria-labelledby="exam-title">
+          <div class="section-heading"><h3 id="exam-title">Integrated readiness exam</h3><span id="exam-progress"></span></div>
+          <p id="exam-timer" class="exercise-meta"></p>
+          <p id="exam-prompt" class="exercise-prompt"></p>
+          <label for="exam-answer">Your answer</label><input id="exam-answer" type="text" autocomplete="off">
+          <button id="exam-next" class="primary-button" type="button">Next question</button>
+          <div id="exam-result" class="exercise-result" role="status"></div>
+        </section>
       </section>
       <section id="campus-panel" class="campus-panel" aria-label="Campus topology" hidden>
         <div class="section-heading"><h2>College access network</h2><span>Fictional campus · Layer 2</span></div>

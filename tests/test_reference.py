@@ -1,8 +1,10 @@
 import unittest
+import tempfile
 from datetime import datetime, timezone
 
 from arista_sim.curriculum import SkillMastery, TrainingMode, load_curriculum, validate_curriculum
 from arista_sim.exercises import choose_study_now, evaluate_attempt, load_exercise_families
+from arista_sim.web import LabApplication
 from arista_sim.reference import load_command_reference
 
 
@@ -68,6 +70,18 @@ class CommandReferenceTests(unittest.TestCase):
         selected = choose_study_now([{"topic_id": "ospf-workflow", "mode": "verify", "mastery": 20, "attempts": 3, "recent_error_rate": 1, "last_practiced_at": "2026-09-01 00:00:00"}], datetime(2026, 9, 25, tzinfo=timezone.utc))
         self.assertIn("factors", selected)
         self.assertGreaterEqual(selected["factors"]["recency"], 1)
+
+    def test_integrated_exam_persists_and_returns_remediation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app = LabApplication(f"{directory}/progress.sqlite3")
+            exam = app.start_exam()
+            self.assertEqual(exam["question_count"], 8)
+            self.assertEqual(app.exam()["active"]["id"], exam["id"])
+            families = {family["id"]: family for family in load_exercise_families()}
+            answers = [families[question["exercise_id"]]["variants"][0]["answer"] for question in exam["questions"]]
+            result = app.submit_exam(exam["id"], {"answers": answers})
+            self.assertEqual(result["score"], result["total"])
+            self.assertEqual(result["remediation"], [])
 
 
 if __name__ == "__main__":

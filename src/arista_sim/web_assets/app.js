@@ -11,6 +11,9 @@ const state = {
   exerciseChoices: [],
   exercise: null,
   hintsUsed: 0,
+  exam: null,
+  examIndex: 0,
+  examAnswers: [],
   busy: false,
 };
 
@@ -133,7 +136,7 @@ async function startSession(labId) {
 
 async function initialize() {
   try {
-    const [catalog, reference, exercise, exercises, progress] = await Promise.all([api("/api/labs"), api("/api/reference"), api("/api/study-now"), api("/api/exercises"), api("/api/progress")]);
+    const [catalog, reference, exercise, exercises, progress, exam] = await Promise.all([api("/api/labs"), api("/api/reference"), api("/api/study-now"), api("/api/exercises"), api("/api/progress"), api("/api/exam")]);
     state.labs = catalog.labs;
     state.sections = catalog.sections || [];
     initializeSections();
@@ -142,6 +145,7 @@ async function initialize() {
     document.querySelector("#practice-choice").replaceChildren(...state.exerciseChoices.map(choice => new Option(`${choice.title} · ${choice.mode}`, choice.id)));
     renderProgress(progress);
     renderExercise(exercise);
+    if (exam.active) renderExam(exam.active);
     labSelect.replaceChildren(...state.labs.map((lab) => {
       const option = document.createElement("option");
       option.value = lab.id;
@@ -419,6 +423,39 @@ function renderCampus(campus, active) {
   }
   document.querySelector("#host-arp").textContent = campus.hosts.map(h => `${h.id}: ${Object.entries(h.arp).map(([ip, mac]) => `${ip} → ${mac}`).join(", ") || "No learned entries"}`).join("\n");
 }
+
+function renderExam(exam) {
+  state.exam = exam;
+  const panel = document.querySelector("#exam-panel");
+  panel.hidden = false;
+  const question = exam.questions[state.examIndex];
+  document.querySelector("#exam-progress").textContent = `${state.examIndex + 1} / ${exam.question_count}`;
+  document.querySelector("#exam-prompt").textContent = question.prompt;
+  document.querySelector("#exam-answer").value = state.examAnswers[state.examIndex] || "";
+  document.querySelector("#exam-timer").textContent = `Started ${exam.started_at}. Hints are unavailable; submit every answer for the final review.`;
+  document.querySelector("#exam-result").textContent = "";
+  document.querySelector("#exam-next").textContent = state.examIndex + 1 === exam.question_count ? "Submit exam" : "Next question";
+  document.querySelector("#exam-answer").focus();
+}
+
+document.querySelector("#exam-start").addEventListener("click", async () => {
+  try { state.examIndex = 0; state.examAnswers = []; renderExam(await api("/api/exam", {method: "POST", body: "{}"})); }
+  catch (error) { document.querySelector("#exercise-result").textContent = error.message; }
+});
+
+document.querySelector("#exam-next").addEventListener("click", async () => {
+  if (!state.exam) return;
+  const answer = document.querySelector("#exam-answer").value.trim();
+  if (!answer) { document.querySelector("#exam-result").textContent = "Enter an answer before continuing."; return; }
+  state.examAnswers[state.examIndex] = answer;
+  if (state.examIndex + 1 < state.exam.question_count) { state.examIndex += 1; renderExam(state.exam); return; }
+  try {
+    const result = await api(`/api/exams/${state.exam.id}/submit`, {method: "POST", body: JSON.stringify({answers: state.examAnswers})});
+    document.querySelector("#exam-result").className = "exercise-result correct";
+    document.querySelector("#exam-result").textContent = `Score: ${result.score}/${result.total}. Review next: ${result.remediation.length ? result.remediation.map(item => `${item.topic_id} (${item.missed} missed)`).join(", ") : "all covered topics"}.`;
+    document.querySelector("#exam-next").disabled = true;
+  } catch (error) { document.querySelector("#exam-result").className = "exercise-result incorrect"; document.querySelector("#exam-result").textContent = error.message; }
+});
 
 function renderProgress(progress) {
   const mastery = document.querySelector("#mastery-summary");
