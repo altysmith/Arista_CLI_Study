@@ -8,19 +8,42 @@
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
+    <div class="app-shell">
+    <aside class="app-sidebar" aria-label="Primary navigation">
+      <div class="brand"><strong>ARISTA</strong><span>NETWORK FOUNDATIONS</span></div><button id="mobile-menu" class="mobile-menu" type="button" aria-expanded="false" aria-controls="primary-navigation">Menu</button>
+      <nav id="primary-navigation" class="primary-nav">
+        <button class="nav-link is-active" type="button" data-view="dashboard">Dashboard</button>
+        <button class="nav-link" type="button" data-view="curriculum">Curriculum</button>
+        <button class="nav-link" type="button" data-view="practice">Practice</button>
+        <button class="nav-link" type="button" data-view="lab">CLI Lab</button>
+        <button class="nav-link" type="button" data-view="troubleshoot">Troubleshooting</button>
+        <button class="nav-link" type="button" data-view="exam">Exam</button>
+        <button class="nav-link" type="button" data-view="progress">Progress</button>
+      </nav>
+      <div class="quick-links"><span>QUICK LINKS</span><button type="button" data-action="study">Study Now</button><button type="button" data-action="weak">Weak Areas</button><button type="button" data-action="recent">Recent Activity</button></div>
+      <p class="sidebar-footer">Build. Configure. Verify. Troubleshoot.</p>
+    </aside>
+    <div class="app-content">
     <header class="app-header">
       <div>
         <p class="eyebrow">Network operations practice</p>
-        <h1>Arista CLI Practice Lab</h1>
-        <p class="header-guide">Choose a lab, work in the console, then check your result.</p>
+        <h1>Arista Network Foundations</h1>
+        <p class="header-guide">Practical certification study, configuration, verification, and troubleshooting.</p>
       </div>
+      <label class="global-search"><span>⌕</span><input id="global-search" type="search" placeholder="Search topics, commands, or labs…"></label>
       <div class="connection" aria-live="polite">
         <span class="connection-dot"></span>
         <span id="connection-label">Starting simulator…</span>
       </div>
     </header>
 
-    <main class="workspace">
+    <main id="dashboard-view" class="dashboard-view">
+      <section class="dashboard-hero"><div><p class="eyebrow">Arista Network Foundations</p><h1>Build real-world network skills.</h1><p>A practical, hands-on study environment for certification-ready network engineering.</p><button id="dashboard-study" class="study-now" type="button"><span>▶</span><strong>Study Now<small id="dashboard-reason">Loading your next recommendation…</small></strong><b>›</b></button></div><section class="readiness-card"><h2>Your readiness</h2><div class="readiness-content"><div id="readiness-ring" class="readiness-ring"><strong id="readiness-value">—</strong><span>assessed</span></div><p id="readiness-copy">Start a focused practice to establish your first mastery signal.</p></div></section></section>
+      <section class="dashboard-actions"><button type="button" data-action="practice"><b>⌘</b><span><strong>Quick Practice</strong><small>Target a focused skill</small></span><i>›</i></button><button type="button" data-action="lab"><b>›_</b><span><strong>CLI Lab</strong><small>Hands-on configuration</small></span><i>›</i></button></section>
+      <section class="dashboard-grid"><article class="dashboard-card skill-card"><div class="card-heading"><h2>Skill readiness</h2><button type="button" data-action="progress">View details →</button></div><div id="dimension-list" class="dimension-list"></div></article><article class="dashboard-card attention-card"><div class="card-heading"><h2>Needs attention</h2><button type="button" data-action="weak">View all →</button></div><div id="attention-list" class="attention-list"></div></article><article class="dashboard-card activity-card"><div class="card-heading"><h2>Recent activity</h2><button type="button" data-action="recent">View all →</button></div><div id="activity-list" class="activity-list"></div></article></section>
+      <section class="dashboard-card curriculum-overview"><div class="card-heading"><h2>Curriculum overview</h2><button type="button" data-action="curriculum">View curriculum →</button></div><div id="curriculum-cards" class="curriculum-cards"></div></section>
+    </main>
+    <main id="lab-workspace" class="workspace" hidden>
       <section id="campus-panel" class="campus-panel" aria-label="Campus topology" hidden>
         <div class="section-heading"><h2 id="topology-title">College access network</h2><span id="topology-subtitle">Fictional campus · Layer 2</span></div>
         <div class="topology">
@@ -158,5 +181,6 @@
     </dialog>
 
     <script src="app.js" defer></script>
+    </div></div>
   </body>
 </html>

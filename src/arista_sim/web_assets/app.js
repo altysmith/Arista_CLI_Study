@@ -6,6 +6,8 @@ const state = {
   draft: "",
   labs: [],
   sections: [],
+  curriculum: null,
+  progress: {skills: [], recent_mistakes: []},
   labId: null,
   reference: null,
   exerciseChoices: [],
@@ -136,15 +138,18 @@ async function startSession(labId) {
 
 async function initialize() {
   try {
-    const [catalog, reference, exercise, exercises, progress, exam] = await Promise.all([api("/api/labs"), api("/api/reference"), api("/api/study-now"), api("/api/exercises"), api("/api/progress"), api("/api/exam")]);
+    const [catalog, reference, exercise, exercises, progress, exam, curriculum] = await Promise.all([api("/api/labs"), api("/api/reference"), api("/api/study-now"), api("/api/exercises"), api("/api/progress"), api("/api/exam"), api("/api/curriculum")]);
     state.labs = catalog.labs;
     state.sections = catalog.sections || [];
     initializeSections();
     state.reference = reference;
     state.exerciseChoices = exercises.exercises;
+    state.curriculum = curriculum;
+    state.progress = progress;
     document.querySelector("#practice-choice").replaceChildren(...state.exerciseChoices.map(choice => new Option(`${choice.title} · ${choice.mode}`, choice.id)));
     renderProgress(progress);
     renderExercise(exercise);
+    renderDashboard();
     if (exam.active) renderExam(exam.active);
     labSelect.replaceChildren(...state.labs.map((lab) => {
       const option = document.createElement("option");
@@ -161,6 +166,88 @@ async function initialize() {
     appendLine(error.message, "error-line");
     input.disabled = true;
   }
+}
+
+const MODE_LABELS = {learn: "Concept knowledge", recall: "Recall", analyze: "Analysis", configure: "Configuration", verify: "Verification", troubleshoot: "Troubleshooting"};
+const PRIORITY_SCORE = {very_high: 4, high: 3, medium: 2, low: 1};
+
+function average(values) { return values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : null; }
+
+function topicMap() {
+  const map = new Map();
+  for (const section of state.curriculum?.sections || []) for (const domain of section.domains) for (const topic of domain.topics) map.set(topic.id, {...topic, section});
+  return map;
+}
+
+function showView(view) {
+  const dashboard = document.querySelector("#dashboard-view");
+  const workspace = document.querySelector("#lab-workspace");
+  const toLab = ["lab", "troubleshoot"].includes(view);
+  dashboard.hidden = toLab;
+  workspace.hidden = !toLab;
+  document.querySelectorAll(".nav-link").forEach(item => item.classList.toggle("is-active", item.dataset.view === view));
+  if (!toLab) window.scrollTo({top: 0, behavior: "smooth"});
+  if (view === "practice") document.querySelector(".study-session")?.setAttribute("open", "");
+  if (view === "curriculum") document.querySelector(".study-browser")?.setAttribute("open", "");
+  if (view === "exam") { document.querySelector(".study-session")?.setAttribute("open", ""); document.querySelector("#exam-start")?.focus(); }
+  if (view === "progress") document.querySelector("#mastery-summary")?.scrollIntoView({behavior: "smooth", block: "center"});
+}
+
+function startRecommendedPractice() {
+  showView("practice");
+  document.querySelector(".study-session")?.scrollIntoView({behavior: "smooth", block: "start"});
+  document.querySelector("#exercise-answer")?.focus();
+}
+
+function renderDashboard() {
+  if (!state.curriculum) return;
+  const skills = state.progress.skills || [];
+  const byKey = new Map(skills.map(skill => [`${skill.topic_id}:${skill.mode}`, skill]));
+  const dimensions = Object.keys(MODE_LABELS).map(mode => ({mode, value: average(skills.filter(skill => skill.mode === mode).map(skill => Number(skill.mastery)))}));
+  const overall = average(skills.map(skill => Number(skill.mastery)));
+  const assessed = skills.length;
+  const ring = document.querySelector("#readiness-ring");
+  ring.style.setProperty("--readiness", `${overall || 0}%`);
+  document.querySelector("#readiness-value").textContent = overall === null ? "—" : `${overall}%`;
+  document.querySelector("#readiness-copy").textContent = overall === null ? "No mastery has been assessed yet. Start with a focused practice to establish a real baseline." : `${assessed} assessed skill${assessed === 1 ? "" : "s"}. Review the dimensions below so one score never hides a weakness.`;
+  document.querySelector("#dashboard-reason").textContent = state.exercise?.reason || "Your next recommended practice";
+
+  const dimensionList = document.querySelector("#dimension-list");
+  dimensionList.replaceChildren(...dimensions.map(item => {
+    const row = document.createElement("div"); row.className = "dimension-row";
+    const label = document.createElement("span"); label.textContent = MODE_LABELS[item.mode];
+    const meter = document.createElement("div"); meter.className = "meter"; const fill = document.createElement("span"); fill.style.width = `${item.value || 0}%`; meter.append(fill);
+    const value = document.createElement("em"); value.textContent = item.value === null ? "—" : `${item.value}%`;
+    row.append(label, meter, value); return row;
+  }));
+
+  const topics = topicMap();
+  const attention = state.exerciseChoices.map(choice => {
+    const skill = byKey.get(`${choice.topic_id}:${choice.mode}`); const topic = topics.get(choice.topic_id);
+    const mastery = skill ? Number(skill.mastery) : 0; const errors = skill ? Number(skill.recent_error_rate) : 0;
+    return {...choice, topic, mastery, errors, score: (100 - mastery) * PRIORITY_SCORE[choice.priority] * (1 + errors)};
+  }).sort((a, b) => b.score - a.score).slice(0, 5);
+  const attentionList = document.querySelector("#attention-list");
+  attentionList.replaceChildren(...attention.map(item => {
+    const row = document.createElement("div"); row.className = `attention-item ${item.mastery < 50 ? "low" : ""}`;
+    const title = document.createElement("strong"); title.textContent = item.title;
+    const meta = document.createElement("span"); meta.textContent = `${MODE_LABELS[item.mode]} · ${item.mastery ? `${item.mastery}% mastery` : "not yet assessed"} · ${item.priority.replace("_", " ")} priority`;
+    const button = document.createElement("button"); button.type = "button"; button.textContent = "Practice"; button.addEventListener("click", async () => { renderExercise(await api(`/api/study-now?topic_id=${encodeURIComponent(item.topic_id)}&mode=${encodeURIComponent(item.mode)}`)); startRecommendedPractice(); });
+    row.append(title, meta, button); return row;
+  }));
+
+  const activities = [...(state.progress.recent_mistakes || [])].slice(0, 5);
+  const activityList = document.querySelector("#activity-list");
+  if (!activities.length) activityList.replaceChildren(Object.assign(document.createElement("p"), {className: "empty-state", textContent: "Your completed practice and lab history will appear here. Start Study Now to create your first activity."}));
+  else activityList.replaceChildren(...activities.map(item => { const row = document.createElement("div"); row.className = "activity-item"; const title = document.createElement("strong"); title.textContent = topics.get(item.topic_id)?.title || item.topic_id; const detail = document.createElement("span"); detail.textContent = `${MODE_LABELS[item.mode]} · review needed · ${item.practiced_at}`; row.append(title, detail); return row; }));
+
+  const cards = document.querySelector("#curriculum-cards");
+  cards.replaceChildren(...state.curriculum.sections.map((section, index) => {
+    const topicIds = section.domains.flatMap(domain => domain.topics.map(topic => topic.id));
+    const values = skills.filter(skill => topicIds.includes(skill.topic_id)).map(skill => Number(skill.mastery)); const value = average(values);
+    const card = document.createElement("article"); card.className = "curriculum-card";
+    const number = document.createElement("b"); number.textContent = String(index + 1); const title = document.createElement("h3"); title.textContent = section.title.replace(/^L1 · /, ""); const description = document.createElement("p"); description.textContent = section.domains.map(domain => domain.title).slice(0, 3).join(" · "); const status = document.createElement("span"); status.textContent = value === null ? "Not yet assessed" : `${value}% assessed mastery`; const button = document.createElement("button"); button.type = "button"; button.textContent = "Continue →"; button.addEventListener("click", () => showView("curriculum")); card.append(number, title, description, status, button); return card;
+  }));
 }
 
 function renderReference(query) {
@@ -310,7 +397,9 @@ document.querySelector("#exercise-form").addEventListener("submit", async event 
     result.className = `exercise-result ${attempt.correct ? "correct" : "incorrect"}`;
     result.textContent = `${attempt.correct ? "Correct." : "Not quite."} ${attempt.explanation} Mastery: ${attempt.progress.mastery}% (${attempt.progress.attempts} attempt${attempt.progress.attempts === 1 ? "" : "s"}).`;
     const next = await api("/api/study-now");
-    renderProgress(await api("/api/progress"));
+    state.progress = await api("/api/progress");
+    renderProgress(state.progress);
+    renderDashboard();
     window.setTimeout(() => renderExercise(next), 900);
   } catch (error) {
     result.className = "exercise-result incorrect";
@@ -617,6 +706,7 @@ function renderSection() {
       button.textContent = lab.title + " · " + lab.estimated_minutes + " min";
       button.addEventListener("click", async () => {
         if (state.busy) return;
+        showView("lab");
         await startSession(lab.id);
         document.querySelector(".lab-card").scrollIntoView({behavior: "smooth", block: "start"});
       });
@@ -646,5 +736,25 @@ function renderSection() {
   }
   sources.hidden = !section.sources?.length;
 }
+
+document.querySelectorAll(".nav-link").forEach(button => button.addEventListener("click", () => showView(button.dataset.view)));
+document.querySelector("#mobile-menu").addEventListener("click", event => { const sidebar = document.querySelector(".app-sidebar"); const open = sidebar.classList.toggle("is-open"); event.currentTarget.setAttribute("aria-expanded", String(open)); });
+document.querySelector("#dashboard-study").addEventListener("click", startRecommendedPractice);
+document.querySelectorAll("[data-action]").forEach(button => button.addEventListener("click", () => {
+  const action = button.dataset.action;
+  if (action === "study" || action === "practice" || action === "weak") startRecommendedPractice();
+  else if (action === "lab") showView("lab");
+  else if (action === "curriculum") showView("curriculum");
+  else if (action === "progress" || action === "recent") showView("progress");
+}));
+document.querySelector("#global-search").addEventListener("keydown", event => {
+  if (event.key !== "Enter") return;
+  const query = event.currentTarget.value.trim().toLowerCase();
+  if (!query) return;
+  if (state.reference?.categories.some(category => category.commands.some(command => `${command.command} ${command.description}`.toLowerCase().includes(query)))) {
+    showView("lab"); referenceDialog.showModal(); referenceSearch.value = query; renderReference(query); return;
+  }
+  showView("curriculum");
+});
 
 initialize();

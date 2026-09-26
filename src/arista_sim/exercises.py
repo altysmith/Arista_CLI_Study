@@ -20,7 +20,7 @@ def load_exercise_families() -> list[dict[str, Any]]:
 
 
 def exercise_choices() -> list[dict[str, str]]:
-    return [{"id": family["id"], "title": family["title"], "topic_id": family["topic_id"], "mode": family["mode"]} for family in load_exercise_families()]
+    return [{"id": family["id"], "title": family["title"], "topic_id": family["topic_id"], "mode": family["mode"], "priority": family["priority"]} for family in load_exercise_families()]
 
 
 def validate_exercise_families(families: list[dict[str, Any]]) -> None:
