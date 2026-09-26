@@ -56,6 +56,9 @@ def _grade_check(device: DeviceState, check: dict[str, Any]) -> dict[str, Any]:
 
     if check_type == "vlan_exists":
         passed = int(check["vlan"]) in device.vlans
+    elif check_type == "device_attribute":
+        attribute = str(check["attribute"])
+        passed = attribute in device.__dataclass_fields__ and getattr(device, attribute) == check["equals"]
     elif check_type == "vlan_name":
         vlan = device.vlans.get(int(check["vlan"]))
         passed = vlan is not None and vlan.name == check["equals"]
@@ -77,6 +80,8 @@ def _grade_check(device: DeviceState, check: dict[str, Any]) -> dict[str, Any]:
             and attribute in interface.__dataclass_fields__
             and actual == expected
         )
+    elif check_type == "static_route":
+        passed = any(route.prefix == check["prefix"] and route.next_hop == check["next_hop"] for route in device.static_routes)
     else:
         raise ValueError(f"Unsupported lab check type: {check_type}")
 

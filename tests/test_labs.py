@@ -2,6 +2,7 @@ import unittest
 
 from arista_sim import DeviceState
 from arista_sim.labs import get_lab, grade_lab, load_labs, public_lab
+from arista_sim.models.device import StaticRoute
 
 
 class LabTests(unittest.TestCase):
@@ -46,6 +47,16 @@ class LabTests(unittest.TestCase):
     def test_unknown_lab_is_rejected(self):
         with self.assertRaises(KeyError):
             get_lab("missing")
+
+    def test_static_default_route_lab_grades_local_route_state(self):
+        device = DeviceState()
+        lab = get_lab("static-default-route")
+        self.assertFalse(grade_lab(device, lab)["passed"])
+        device.ip_routing = True
+        device.static_routes.append(StaticRoute("0.0.0.0/0", "192.0.2.1"))
+        grade = grade_lab(device, lab, ["show ip route"])
+        self.assertTrue(grade["passed"])
+        self.assertEqual(grade["process_passed_count"], 1)
 
 
 if __name__ == "__main__":
