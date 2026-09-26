@@ -135,8 +135,8 @@ class LabApplication:
 
     def progress(self) -> dict[str, Any]:
         if not self.sessions.database:
-            return {"skills": [], "recent_mistakes": []}
-        return {"skills": self.sessions.database.skill_progress(), "recent_mistakes": self.sessions.database.recent_mistakes()}
+            return {"skills": [], "recent_mistakes": [], "recent_activity": []}
+        return {"skills": self.sessions.database.skill_progress(), "recent_mistakes": self.sessions.database.recent_mistakes(), "recent_activity": self.sessions.database.recent_activity()}
 
     def exercises(self) -> dict[str, Any]:
         return {"exercises": exercise_choices()}
@@ -234,9 +234,12 @@ class LabApplication:
 
     def grade(self, session_id: str) -> dict[str, Any]:
         browser_session = self.sessions.get(session_id)
-        if browser_session.campus:
-            return browser_session.campus.grade()
-        return grade_lab(browser_session.cli.device, get_lab(browser_session.lab_id), browser_session.cli.history)
+        grade = browser_session.campus.grade() if browser_session.campus else grade_lab(browser_session.cli.device, get_lab(browser_session.lab_id), browser_session.cli.history)
+        if self.sessions.database:
+            lab = get_lab(browser_session.lab_id)
+            complete = bool(grade.get("complete"))
+            self.sessions.database.record_activity("lab", lab["title"], "completed" if complete else "requirements still open", 100 if complete else 0)
+        return grade
 
     def campus_action(self, session_id, payload):
         current = self.sessions.get(session_id)

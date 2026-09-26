@@ -257,10 +257,10 @@ function renderDashboard() {
     row.append(title, meta, button); return row;
   }));
 
-  const activities = [...(state.progress.recent_mistakes || [])].slice(0, 5);
+  const activities = [...(state.progress.recent_activity || [])].slice(0, 5);
   const activityList = document.querySelector("#activity-list");
   if (!activities.length) activityList.replaceChildren(Object.assign(document.createElement("p"), {className: "empty-state", textContent: "Your completed practice and lab history will appear here. Start Study Now to create your first activity."}));
-  else activityList.replaceChildren(...activities.map(item => { const row = document.createElement("div"); row.className = "activity-item"; const title = document.createElement("strong"); title.textContent = topics.get(item.topic_id)?.title || item.topic_id; const detail = document.createElement("span"); detail.textContent = `${MODE_LABELS[item.mode]} · review needed · ${item.practiced_at}`; row.append(title, detail); return row; }));
+  else activityList.replaceChildren(...activities.map(item => { const row = document.createElement("div"); row.className = "activity-item"; const title = document.createElement("strong"); title.textContent = topics.get(item.title)?.title || item.title; const detail = document.createElement("span"); detail.textContent = `${item.detail}${item.score === null ? "" : ` · ${Math.round(item.score)}%`} · ${item.occurred_at}`; row.append(title, detail); return row; }));
 
   const cards = document.querySelector("#curriculum-cards");
   cards.replaceChildren(...state.curriculum.sections.map((section, index) => {

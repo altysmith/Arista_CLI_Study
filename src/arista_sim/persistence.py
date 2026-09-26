@@ -67,6 +67,7 @@ class ProgressDatabase:
             db.execute("CREATE TABLE IF NOT EXISTS exercise_attempts (id INTEGER PRIMARY KEY, exercise_id TEXT NOT NULL, topic_id TEXT NOT NULL, mode TEXT NOT NULL, correct INTEGER NOT NULL, hints_used INTEGER NOT NULL DEFAULT 0, error_tags TEXT NOT NULL DEFAULT '[]', practiced TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
             db.execute("CREATE TABLE IF NOT EXISTS skill_mastery (topic_id TEXT NOT NULL, mode TEXT NOT NULL, mastery REAL NOT NULL, attempts INTEGER NOT NULL, correct_attempts INTEGER NOT NULL, recent_error_rate REAL NOT NULL, last_practiced_at TEXT NOT NULL, PRIMARY KEY(topic_id, mode))")
             db.execute("CREATE TABLE IF NOT EXISTS exam_sessions (id TEXT PRIMARY KEY, questions TEXT NOT NULL, started TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, submitted TEXT, results TEXT)")
+            db.execute("CREATE TABLE IF NOT EXISTS activity_events (id INTEGER PRIMARY KEY, kind TEXT NOT NULL, title TEXT NOT NULL, detail TEXT NOT NULL, score REAL, occurred TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
 
     @contextmanager
     def connect(self):
@@ -108,6 +109,15 @@ class ProgressDatabase:
             rows = db.execute("SELECT exercise_id,topic_id,mode,error_tags,practiced FROM exercise_attempts WHERE correct=0 ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
         return [{"exercise_id": row[0], "topic_id": row[1], "mode": row[2], "error_tags": json.loads(row[3]), "practiced_at": row[4]} for row in rows]
 
+    def recent_activity(self, limit=8):
+        with self.connect() as db:
+            rows = db.execute("SELECT kind,title,detail,score,occurred FROM activity_events ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+        return [{"kind": row[0], "title": row[1], "detail": row[2], "score": row[3], "occurred_at": row[4]} for row in rows]
+
+    def record_activity(self, kind, title, detail, score=None):
+        with self.connect() as db:
+            db.execute("INSERT INTO activity_events(kind,title,detail,score) VALUES(?,?,?,?)", (kind, title, detail, score))
+
     def exercise_attempt_counts(self):
         with self.connect() as db:
             rows = db.execute("SELECT exercise_id,COUNT(*) FROM exercise_attempts GROUP BY exercise_id").fetchall()
@@ -121,6 +131,7 @@ class ProgressDatabase:
             recent_error_rate = 1 - sum(row[0] for row in recent) / len(recent)
             mastery = round(100 * effective_correct / attempts, 1)
             db.execute("INSERT INTO skill_mastery(topic_id,mode,mastery,attempts,correct_attempts,recent_error_rate,last_practiced_at) VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(topic_id,mode) DO UPDATE SET mastery=excluded.mastery,attempts=excluded.attempts,correct_attempts=excluded.correct_attempts,recent_error_rate=excluded.recent_error_rate,last_practiced_at=excluded.last_practiced_at", (topic_id, mode, mastery, attempts, correct_attempts, recent_error_rate))
+            db.execute("INSERT INTO activity_events(kind,title,detail,score) VALUES(?,?,?,?)", ("practice", topic_id, f"{mode} · {'correct' if correct else 'review needed'}", mastery))
         return {"topic_id": topic_id, "mode": mode, "mastery": mastery, "attempts": attempts, "correct_attempts": correct_attempts, "recent_error_rate": recent_error_rate}
 
     def create_exam(self, exam_id, questions):
@@ -146,4 +157,5 @@ class ProgressDatabase:
             if db.execute("SELECT submitted FROM exam_sessions WHERE id=?", (exam_id,)).fetchone() is None:
                 raise KeyError("Exam not found")
             db.execute("UPDATE exam_sessions SET submitted=CURRENT_TIMESTAMP,results=? WHERE id=? AND submitted IS NULL", (json.dumps(results), exam_id))
+            db.execute("INSERT INTO activity_events(kind,title,detail,score) VALUES(?,?,?,?)", ("exam", "Integrated readiness exam", f"{results.get('correct', 0)} correct", results.get("score")))
         return self.exam(exam_id)
