@@ -39,6 +39,8 @@
 .ping-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin: 20px 0 12px; }
 .ping-controls label { display: grid; gap: 5px; font-size: 14px; }
 .ping-controls select { padding: 8px; color: var(--text); background: var(--panel-raised); border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+.ping-route-timeline { margin: 10px 0; padding: 10px 12px; border-left: 2px solid var(--cyan); background: var(--cyan-soft); font: 13px var(--mono); color: var(--text); }
+.ping-route-timeline p { margin: 5px 0; }
 #host-arp { overflow: auto; font-size: 14px; }
 button:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 @media(max-width: 600px) { .campus-panel { padding: 16px; } .node { min-width: 0; padding: 10px 14px; } .host-list, .routing-evidence-cards { gap: 8px; } .routing-evidence-cards { grid-template-columns: 1fr; } }

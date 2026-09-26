@@ -572,6 +572,9 @@ document.querySelector("#ping-form").addEventListener("submit", async event => {
   try {
     const result = await api(`/api/sessions/${state.sessionId}/campus`, {method: "POST", body: JSON.stringify({source: document.querySelector("#ping-source").value, destination: document.querySelector("#ping-destination").value})});
     document.querySelector("#ping-result").textContent = result.output;
+    const timeline = document.querySelector("#ping-route-timeline");
+    timeline.hidden = !result.timeline;
+    if (result.timeline) timeline.replaceChildren(...result.timeline.flatMap(item => [Object.assign(document.createElement("p"), {textContent: item.direction}), ...item.routes.map(route => Object.assign(document.createElement("p"), {textContent: `↳ ${route.source} ${route.prefix} via ${route.via} · ${route.reason}`}))]));
     renderCampus(result.campus, result.active);
   } catch (error) { document.querySelector("#ping-result").textContent = error.message; }
   finally { state.busy = false; labSelect.disabled = false; }

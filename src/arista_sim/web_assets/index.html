@@ -71,6 +71,7 @@
           <button class="secondary-button" type="submit">Ping host</button>
         </form>
         <p id="ping-result" role="status">Test a host pair, then inspect the relevant switch or router evidence.</p>
+        <div id="ping-route-timeline" class="ping-route-timeline" hidden></div>
         <details><summary>Host ARP tables and simulation limits</summary><pre id="host-arp">No learned entries.</pre>
           <p id="topology-limits">Same-subnet traffic on this fixed, loop-free topology is simulated. Routing, STP convergence, LACP, MLAG, ACL enforcement, and traffic timing are not modeled. Learning tables clear on configuration changes and server restart. Switch ARP stays empty because no Layer 3 interface participates.</p>
         </details>

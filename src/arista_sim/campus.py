@@ -479,7 +479,10 @@ class RoutedCampus:
         if forward and reverse:
             self.arp[source][str(ip_interface(ROUTED_HOSTS[destination][2]).ip)] = ROUTED_HOSTS[destination][4]
             self.arp[destination][str(ip_interface(ROUTED_HOSTS[source][2]).ip)] = ROUTED_HOSTS[source][4]
-            return {"success": True, "output": f"{source} → {destination}: reply received (simulated IPv4). Path: " + " → ".join(forward_path)}
+            destination_ip = str(ip_interface(ROUTED_HOSTS[destination][2]).ip)
+            source_ip = str(ip_interface(ROUTED_HOSTS[source][2]).ip)
+            timeline = [{"direction": f"{source} → {destination}", "routes": [decision for node in forward_path if node in self.sessions and (decision := self.route_decision(node, destination_ip))]}, {"direction": f"{destination} → {source}", "routes": [decision for node in reverse_path if node in self.sessions and (decision := self.route_decision(node, source_ip))]}]
+            return {"success": True, "output": f"{source} → {destination}: reply received (simulated IPv4). Path: " + " → ".join(forward_path), "timeline": timeline}
         detail = reason if not forward else f"return path failed: {reverse_reason}"
         return {"success": False, "output": f"{source} → {destination}: request timed out; {detail}."}
 
