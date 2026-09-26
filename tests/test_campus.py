@@ -62,6 +62,13 @@ class CampusTests(unittest.TestCase):
         self.assertTrue(campus.ping("SITE-A", "SITE-B")["success"])
         self.assertTrue(campus.grade()["passed"])
 
+    def test_more_specific_ospf_route_wins_over_broader_static_route(self):
+        campus = RoutedCampus("ospf-specificity")
+        route_table = campus.sessions["EDGE-A"].execute("show ip route")
+        self.assertIn("S        10.20.0.0/16", route_table)
+        self.assertIn("O        10.20.20.0/24", route_table)
+        self.assertTrue(campus.ping("SITE-A", "SITE-B")["success"])
+
     def test_routed_campus_ticket_uses_the_browser_session_and_resumes(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "progress.sqlite3"

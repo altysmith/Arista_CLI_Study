@@ -1,0 +1,12 @@
+{
+  "id": "ospf-prefix-selection-ticket",
+  "title": "Routed campus ticket: OSPF longest-prefix selection",
+  "summary": "Verify why a more-specific OSPF route wins over a broader static route.",
+  "difficulty": "Campus · OSPF route selection",
+  "estimated_minutes": 15,
+  "brief": "EDGE-A has a broad static route for 10.20.0.0/16 and a learned OSPF route for the more-specific SITE-B LAN 10.20.20.0/24. Use route evidence and host ping to prove which route the simulator selects. This model evaluates longest-prefix selection before route source; it does not model OSPF metrics, LSAs, ECMP, or real packet timing.",
+  "objectives": ["Identify both matching routes", "Explain why the /24 wins over the /16", "Verify SITE-A reaches SITE-B using the selected path"],
+  "hints": ["Compare the destination address with both prefix lengths.", "The longest matching prefix is considered before route source preference.", "Use show ip route and host ping as complementary evidence."],
+  "campus_fault": "ospf-specificity",
+  "checks": []
+}

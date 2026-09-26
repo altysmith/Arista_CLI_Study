@@ -222,7 +222,7 @@ class RoutedCampusSession(Session):
 class RoutedCampus:
     """A fixed three-router topology that evaluates static IPv4 forwarding and return paths only."""
     def __init__(self, fault="static"):
-        if fault not in ("static", "next-hop", "ospf-area", "ospf-route", "ospf-link"):
+        if fault not in ("static", "next-hop", "ospf-area", "ospf-route", "ospf-link", "ospf-specificity"):
             raise ValueError("Unknown routed campus fault")
         self.fault = fault
         self.sessions = {name: RoutedCampusSession(self, name) for name in ROUTED_SWITCHES}
@@ -250,15 +250,17 @@ class RoutedCampus:
             "CORE-1": (("10.10.10.0/24", "192.0.2.1"), ("10.20.20.0/24", "198.51.100.2")),
             "EDGE-B": (("10.10.10.0/24", "198.51.100.1"),) if self.fault == "next-hop" else (),
         }
-        if self.fault in ("ospf-area", "ospf-route", "ospf-link"):
+        if self.fault in ("ospf-area", "ospf-route", "ospf-link", "ospf-specificity"):
             routes = {node: () for node in ROUTED_SWITCHES}
+        if self.fault == "ospf-specificity":
+            routes["EDGE-A"] = (("10.20.0.0/16", "192.0.2.6"),)
         for node in ROUTED_SWITCHES:
             commands = ["enable", "configure terminal", f"hostname {node}", "ip routing"]
             for port, address in interfaces[node]:
                 commands += [f"interface {port}", "no switchport", f"ip address {address}", "no shutdown", "exit"]
             for prefix, next_hop in routes[node]:
                 commands.append(f"ip route {prefix} {next_hop}")
-            if self.fault in ("ospf-area", "ospf-route", "ospf-link"):
+            if self.fault in ("ospf-area", "ospf-route", "ospf-link", "ospf-specificity"):
                 router_id = {"EDGE-A": "1.1.1.1", "CORE-1": "2.2.2.2", "EDGE-B": "3.3.3.3"}[node]
                 network = {"EDGE-A": "192.0.2.0/30", "CORE-1": "192.0.2.0/30", "EDGE-B": "198.51.100.0/30"}[node]
                 area = "1" if self.fault == "ospf-area" and node == "EDGE-B" else "0"
@@ -266,9 +268,9 @@ class RoutedCampus:
                     commands += ["router ospf 1", f"router-id {router_id}", "network 192.0.2.0/30 area 0", "network 198.51.100.0/30 area 0", "exit"]
                 else:
                     commands += ["router ospf 1", f"router-id {router_id}", f"network {network} area {area}"]
-                    if self.fault in ("ospf-route", "ospf-link") and node == "EDGE-A":
+                    if self.fault in ("ospf-route", "ospf-link", "ospf-specificity") and node == "EDGE-A":
                         commands.append("network 10.10.10.0/24 area 0")
-                    if self.fault == "ospf-link" and node == "EDGE-B":
+                    if self.fault in ("ospf-link", "ospf-specificity") and node == "EDGE-B":
                         commands.append("network 10.20.20.0/24 area 0")
                     if self.fault == "ospf-route" and node == "EDGE-B":
                         # The missing SITE-B LAN advertisement is the ticket fault.
@@ -414,14 +416,13 @@ class RoutedCampus:
                   for configured in port.ipv4_addresses if address in ip_interface(configured).network]
         if direct:
             return max(direct, key=lambda item: item[0])[1], None
-        matches = [(ip_network(route.prefix, strict=False).prefixlen, route) for route in device.static_routes
-                   if address in ip_network(route.prefix, strict=False)]
+        matches = [(ip_network(route.prefix, strict=False).prefixlen, 1, route) for route in device.static_routes if address in ip_network(route.prefix, strict=False)]
+        matches += [(ip_network(route["prefix"], strict=False).prefixlen, 0, route) for route in self.ospf_routes(node) if address in ip_network(route["prefix"], strict=False)]
         if not matches:
-            ospf = [(ip_network(route["prefix"], strict=False).prefixlen, route) for route in self.ospf_routes(node) if address in ip_network(route["prefix"], strict=False)]
-            if not ospf:
-                return None, "no matching static or OSPF route"
-            return self._ospf_next_hop(node, max(ospf, key=lambda item: item[0])[1]["owner"])
-        route = max(matches, key=lambda item: item[0])[1]
+            return None, "no matching static or OSPF route"
+        _, source_priority, route = max(matches, key=lambda item: (item[0], item[1]))
+        if source_priority == 0:
+            return self._ospf_next_hop(node, route["owner"])
         for port in device.interfaces.values():
             if any(ip_address(route.next_hop) in ip_interface(configured).network for configured in port.ipv4_addresses):
                 return port, route.next_hop
