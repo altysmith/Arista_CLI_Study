@@ -53,12 +53,13 @@ class CommandReferenceTests(unittest.TestCase):
             validate_curriculum(curriculum)
 
     def test_exercise_families_evaluate_and_select_deterministically(self):
-        self.assertEqual(len(load_exercise_families()), 6)
+        self.assertEqual(len(load_exercise_families()), 13)
         selected = choose_study_now([])
         self.assertEqual(selected["id"], "vlan-trunk-mismatch")
         self.assertNotIn("answer", selected)
         result = evaluate_attempt("arp-next-hop", "remote-server", "10.10.10.1")
         self.assertTrue(result["correct"])
+        self.assertTrue(evaluate_attempt("static-default-route", "gateway-192-0-2-1", "ip route 0.0.0.0/0 192.0.2.1")["correct"])
 
     def test_study_now_exposes_adaptive_factors(self):
         selected = choose_study_now([{"topic_id": "ospf-workflow", "mode": "verify", "mastery": 20, "attempts": 3, "recent_error_rate": 1, "last_practiced_at": "2026-09-01 00:00:00"}], datetime(2026, 9, 25, tzinfo=timezone.utc))

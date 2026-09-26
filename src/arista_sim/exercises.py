@@ -26,8 +26,8 @@ def exercise_choices() -> list[dict[str, str]]:
 def validate_exercise_families(families: list[dict[str, Any]]) -> None:
     if not isinstance(families, list) or not families:
         raise ValueError("Exercise families must be a non-empty list")
-    topic_ids = {
-        topic["id"]
+    topics = {
+        topic["id"]: topic
         for section in load_curriculum()["sections"]
         for domain in section["domains"]
         for topic in domain["topics"]
@@ -40,10 +40,12 @@ def validate_exercise_families(families: list[dict[str, Any]]) -> None:
         if family["id"] in family_ids:
             raise ValueError(f"Duplicate exercise family id: {family['id']}")
         family_ids.add(family["id"])
-        if family["topic_id"] not in topic_ids:
+        if family["topic_id"] not in topics:
             raise ValueError(f"Unknown topic: {family['topic_id']}")
         if family["mode"] not in {mode.value for mode in TrainingMode}:
             raise ValueError(f"Invalid exercise mode: {family['mode']}")
+        if family["mode"] not in topics[family["topic_id"]]["modes"]:
+            raise ValueError(f"Exercise mode is not supported by topic: {family['id']}")
         if family["priority"] not in PRIORITY_WEIGHTS:
             raise ValueError(f"Invalid exercise priority: {family['priority']}")
         variants = family["variants"]

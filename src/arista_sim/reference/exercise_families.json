@@ -28,5 +28,40 @@
     "id": "acl-first-match", "title": "ACL first-match behavior", "topic_id": "acl-workflow", "mode": "analyze", "priority": "very_high",
     "hints": ["ACL entries are examined from top to bottom.", "The first matching entry decides the result."], "error_tags": ["concept", "wrong-direction"],
     "variants": [{"id": "specific-before-general", "prompt": "An ACL permits IP any any before denying TCP host 10.1.1.10 any eq 22. Is SSH from 10.1.1.10 permitted or denied?", "answer": "permitted", "explanation": "The earlier permit ip any any matches first, so the later SSH deny is never reached."}]
+  },
+  {
+    "id": "eos-cli-modes", "title": "EOS CLI mode workflow", "topic_id": "eos-cli-workflow", "mode": "recall", "priority": "high",
+    "hints": ["Start from privileged EXEC mode.", "Global configuration is one command from privileged EXEC."], "error_tags": ["wrong-mode", "syntax"],
+    "variants": [{"id": "enter-config", "prompt": "From switch#, which command enters global configuration mode?", "answer": "configure terminal", "explanation": "configure terminal enters global configuration mode from privileged EXEC; the prompt becomes switch(config)#."}]
+  },
+  {
+    "id": "eos-config-state", "title": "Running versus startup configuration", "topic_id": "eos-cli-workflow", "mode": "verify", "priority": "high",
+    "hints": ["A working change is not necessarily saved.", "Compare active and saved configuration deliberately."], "error_tags": ["verification-skipped", "concept"],
+    "variants": [{"id": "save-for-reboot", "prompt": "A configuration works now but must survive a reboot. Which EOS command saves it?", "answer": "copy running-config startup-config", "explanation": "The running configuration is active now; copying it to startup-config preserves it across a reboot."}]
+  },
+  {
+    "id": "interface-evidence", "title": "Interface evidence first", "topic_id": "eos-interface-workflow", "mode": "troubleshoot", "priority": "high",
+    "hints": ["Start with the lowest unproven dependency.", "Use the concise interface state view before changing configuration."], "error_tags": ["wrong-command", "dependency-missed"],
+    "variants": [{"id": "check-link-state", "prompt": "A VLAN user is offline and link state has not been proven. Which command gives a concise status view of all interfaces?", "answer": "show interfaces status", "explanation": "show interfaces status is an efficient first check for administrative and link-state evidence before assuming a VLAN fault."}]
+  },
+  {
+    "id": "lacp-compatibility", "title": "LACP compatibility", "topic_id": "stp-lacp-mlag", "mode": "analyze", "priority": "very_high",
+    "hints": ["LACP needs at least one side to initiate negotiation.", "Do not mix static and negotiated aggregation."], "error_tags": ["concept", "dependency-missed"],
+    "variants": [{"id": "passive-passive", "prompt": "Two switches use LACP passive on both ends of a port-channel. Will the LACP bundle form? Answer yes or no.", "answer": "no", "explanation": "Passive/passive provides no initiator, so LACP negotiation does not form the bundle. Active/passive or active/active can form it."}]
+  },
+  {
+    "id": "mlag-peer-versus-downstream", "title": "MLAG role distinction", "topic_id": "stp-lacp-mlag", "mode": "analyze", "priority": "very_high",
+    "hints": ["One port-channel connects the two peers.", "Another can connect a dual-attached downstream device."], "error_tags": ["concept", "wrong-interface"],
+    "variants": [{"id": "peer-link-role", "prompt": "In an MLAG design, what connects the two MLAG peer switches: the peer link or the downstream MLAG port-channel?", "answer": "peer link", "explanation": "The peer link connects the two peers. A downstream MLAG port-channel connects a dual-attached device to the peer pair."}]
+  },
+  {
+    "id": "static-default-route", "title": "Static default route", "topic_id": "route-selection", "mode": "configure", "priority": "very_high",
+    "hints": ["A default route matches destinations without a more specific route.", "Use the IPv4 prefix 0.0.0.0/0."], "error_tags": ["syntax", "route-selection"],
+    "variants": [{"id": "gateway-192-0-2-1", "prompt": "Configure an IPv4 default route through next hop 192.0.2.1. Enter the EOS command.", "answer": "ip route 0.0.0.0/0 192.0.2.1", "explanation": "A static default route uses 0.0.0.0/0 and the reachable next-hop address."}]
+  },
+  {
+    "id": "ospf-first-failed-dependency", "title": "OSPF troubleshooting order", "topic_id": "ospf-workflow", "mode": "troubleshoot", "priority": "very_high",
+    "hints": ["Do not assume routes are the first thing to check.", "Adjacency is a prerequisite to learning routes dynamically."], "error_tags": ["dependency-missed", "verification-skipped"],
+    "variants": [{"id": "neighbor-before-route", "prompt": "OSPF routes are missing after configuration. Which should be verified first: neighbor adjacency or the OSPF route table?", "answer": "neighbor adjacency", "explanation": "An OSPF adjacency is a prerequisite for learning routes. Prove the neighbor state before interpreting absent OSPF routes."}]
   }
 ]
