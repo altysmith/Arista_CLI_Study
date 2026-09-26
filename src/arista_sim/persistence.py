@@ -107,6 +107,11 @@ class ProgressDatabase:
             rows = db.execute("SELECT exercise_id,topic_id,mode,error_tags,practiced FROM exercise_attempts WHERE correct=0 ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
         return [{"exercise_id": row[0], "topic_id": row[1], "mode": row[2], "error_tags": json.loads(row[3]), "practiced_at": row[4]} for row in rows]
 
+    def exercise_attempt_counts(self):
+        with self.connect() as db:
+            rows = db.execute("SELECT exercise_id,COUNT(*) FROM exercise_attempts GROUP BY exercise_id").fetchall()
+        return {exercise_id: attempts for exercise_id, attempts in rows}
+
     def record_attempt(self, exercise_id, topic_id, mode, correct, hints_used, error_tags):
         with self.connect() as db:
             db.execute("INSERT INTO exercise_attempts(exercise_id,topic_id,mode,correct,hints_used,error_tags) VALUES(?,?,?,?,?,?)", (exercise_id, topic_id, mode, int(correct), hints_used, json.dumps(error_tags)))

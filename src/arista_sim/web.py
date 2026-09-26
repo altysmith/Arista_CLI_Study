@@ -125,7 +125,8 @@ class LabApplication:
 
     def study_now(self, topic_id=None, mode=None) -> dict[str, Any]:
         progress = self.sessions.database.skill_progress() if self.sessions.database else []
-        return choose_study_now(progress, topic_id=topic_id, mode=mode)
+        attempts = self.sessions.database.exercise_attempt_counts() if self.sessions.database else {}
+        return choose_study_now(progress, topic_id=topic_id, mode=mode, family_attempts=attempts)
 
     def progress(self) -> dict[str, Any]:
         if not self.sessions.database:

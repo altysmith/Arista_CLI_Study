@@ -64,7 +64,7 @@ def public_exercise(family: dict[str, Any], variant: dict[str, Any], reason: str
     }
 
 
-def choose_study_now(progress: list[dict[str, Any]], now: datetime | None = None, topic_id: str | None = None, mode: str | None = None) -> dict[str, Any]:
+def choose_study_now(progress: list[dict[str, Any]], now: datetime | None = None, topic_id: str | None = None, mode: str | None = None, family_attempts: dict[str, int] | None = None) -> dict[str, Any]:
     """Choose deterministically so the learner can understand and test the recommendation."""
     now = now or datetime.now(timezone.utc)
     progress_by_skill = {(item["topic_id"], item["mode"]): item for item in progress}
@@ -96,7 +96,7 @@ def choose_study_now(progress: list[dict[str, Any]], now: datetime | None = None
     if not ranked:
         raise ValueError("No practice family matches that topic and mode")
     _, family, reason, factors = max(ranked, key=lambda item: (item[0], item[1]["id"]))
-    attempts = int(progress_by_skill.get((family["topic_id"], family["mode"]), {}).get("attempts", 0))
+    attempts = (family_attempts or {}).get(family["id"], 0)
     variant = family["variants"][attempts % len(family["variants"])]
     return public_exercise(family, variant, reason, factors)
 
