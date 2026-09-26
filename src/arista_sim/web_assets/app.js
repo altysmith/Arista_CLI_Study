@@ -359,6 +359,7 @@ document.querySelector("#check-work").addEventListener("click", async () => {
       item.textContent = `${result.passed ? "✓" : "○"} ${result.label}`;
       return item;
     }));
+    if (grade.process) appendLine(`Troubleshooting evidence: ${grade.process_passed_count} / ${grade.process_total_count}`, "welcome");
   } catch (error) {
     appendLine(error.message, "error-line");
   } finally {

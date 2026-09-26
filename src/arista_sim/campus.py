@@ -56,6 +56,7 @@ class Campus:
         self.sessions = {name: CampusSession(self, name) for name in SWITCHES}
         self.mac = {name: {} for name in SWITCHES}
         self.arp = {name: {} for name in HOSTS}
+        self.evidence = set()
         for name, cli in self.sessions.items():
             commands = ["enable", "configure terminal", f"hostname {name}"]
             for vlan, label in ((10, "STAFF"), (20, "STUDENTS"), (99, "MANAGEMENT")):
@@ -130,6 +131,8 @@ class Campus:
     def ping(self, source, destination, learn=True):
         if source not in HOSTS or destination not in HOSTS or source == destination:
             raise ValueError("Choose two different lab hosts")
+        if learn:
+            self.evidence.add("host_ping")
         src, dst = HOSTS[source], HOSTS[destination]
         if ip_interface(src[2]).network != ip_interface(dst[2]).network:
             return {"success": False, "output": "No gateway configured. This lab supports same-subnet Layer 2 traffic only."}
@@ -151,7 +154,13 @@ class Campus:
         results.append({"label": "Staff and student Layer 2 networks remain isolated", "passed": isolated})
         results.append({"label": "VLAN 99 remains allowed on every uplink", "passed": all(
             self.transfer(a, ap, b, bp, 99) == 99 and self.transfer(b, bp, a, ap, 99) == 99 for a, ap, b, bp in LINKS)})
-        return {"results": results, "passed": all(r["passed"] for r in results), "passed_count": sum(r["passed"] for r in results), "total_count": len(results)}
+        histories = [command.casefold() for cli in self.sessions.values() for command in cli.history]
+        process = [
+            {"label": "Tested host connectivity", "passed": "host_ping" in self.evidence},
+            {"label": "Mapped an uplink with LLDP", "passed": any(command.startswith("show lldp") for command in histories)},
+            {"label": "Inspected trunk state", "passed": any(command.startswith("show interfaces trunk") for command in histories)},
+        ]
+        return {"results": results, "passed": all(r["passed"] for r in results), "passed_count": sum(r["passed"] for r in results), "total_count": len(results), "process": process, "process_passed_count": sum(r["passed"] for r in process), "process_total_count": len(process)}
 
     def view(self):
         return {"switches": list(SWITCHES), "links": [{"a": a, "ap": ap, "b": b, "bp": bp,

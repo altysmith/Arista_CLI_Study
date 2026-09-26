@@ -54,6 +54,16 @@ class CampusTests(unittest.TestCase):
         self.assertTrue(all(not entries for entries in campus.mac.values()))
         self.assertTrue(all(not entries for entries in campus.arp.values()))
 
+    def test_campus_grade_reports_evidence_without_blocking_a_correct_repair(self):
+        campus = Campus("trunk")
+        campus.ping("STUDENT-A", "STUDENT-B")
+        cli = campus.sessions["ACCESS-B"]
+        for command in ["enable", "show lldp neighbors", "show interfaces trunk", "configure terminal", "interface Ethernet48", "switchport trunk allowed vlan add 20", "end"]:
+            cli.execute(command)
+        grade = campus.grade()
+        self.assertTrue(grade["passed"])
+        self.assertEqual(grade["process_passed_count"], 3)
+
     def test_server_restart_resumes_all_switches_and_reset_persists(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "progress.sqlite3"
