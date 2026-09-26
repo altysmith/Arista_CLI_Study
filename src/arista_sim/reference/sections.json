@@ -392,7 +392,7 @@
       {
         "title": "2. QoS classification to egress",
         "description": "Trace traffic through classification, marking, a trust boundary, CoS/DSCP mapping, traffic classes, queues, policy maps, policing, shaping, and verification counters.",
-        "labs": ["qos-voice-marking"],
+        "labs": ["qos-voice-marking", "qos-policy-not-applied"],
         "checkpoints": [
           {"question": "What is the difference between classification and marking?", "answer": "Classification identifies traffic based on characteristics such as addresses, protocol, ports, or existing markings. Marking writes or rewrites a traffic marking such as DSCP or CoS."},
           {"question": "How do policing and shaping differ?", "answer": "Policing enforces a rate by dropping or remarking traffic that exceeds it. Shaping buffers and schedules traffic to smooth its transmission rate, trading delay for a controlled output rate."}

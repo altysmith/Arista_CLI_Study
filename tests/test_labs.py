@@ -127,6 +127,19 @@ class LabTests(unittest.TestCase):
         self.assertTrue(grade["passed"])
         self.assertEqual(grade["process_passed_count"], 3)
 
+    def test_qos_policy_not_applied_requires_edge_attachment(self):
+        device = DeviceState()
+        lab = get_lab("qos-policy-not-applied")
+        device.access_lists["VOICE-ACL"] = AccessList("VOICE-ACL", ["10 permit udp any any"])
+        device.ensure_class_map("VOICE").access_group = "VOICE-ACL"
+        device.ensure_policy_map("EDGE-QOS").classes["VOICE"] = PolicyClass("VOICE", ["set dscp 46"])
+        self.assertFalse(grade_lab(device, lab)["passed"])
+
+        device.interfaces["Ethernet1"].service_policies["input"] = "EDGE-QOS"
+        grade = grade_lab(device, lab, ["show policy-map", "show running-config"])
+        self.assertTrue(grade["passed"])
+        self.assertEqual(grade["process_passed_count"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()
