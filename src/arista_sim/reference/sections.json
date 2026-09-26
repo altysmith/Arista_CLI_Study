@@ -322,7 +322,7 @@
       {
         "title": "4. LACP and MLAG",
         "description": "Understand member compatibility, LACP active/passive behavior, logical port channels, MLAG peer components, and the difference between a configured state and a proven healthy topology.",
-        "labs": ["mlag-campus-repair"],
+        "labs": ["mlag-campus-repair", "mlag-peer-link-repair"],
         "checkpoints": [
           {"question": "Which LACP mode pairing cannot form a negotiated bundle?", "answer": "Passive/passive cannot initiate LACP negotiation. At least one side must be active for an LACP bundle to form."},
           {"question": "What does a configured MLAG summary not prove in this simulator?", "answer": "It does not prove peer reachability, LACP negotiation, forwarding, or failover. Those require a real two-peer topology and operational testing."}

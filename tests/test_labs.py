@@ -175,6 +175,19 @@ class LabTests(unittest.TestCase):
         self.assertTrue(grade["passed"])
         self.assertEqual(grade["process_passed_count"], 3)
 
+    def test_mlag_peer_link_repair_requires_local_peer_link(self):
+        device = DeviceState()
+        lab = get_lab("mlag-peer-link-repair")
+        device.mlag.domain_id = "CAMPUS"
+        device.mlag.local_interface = "Vlan4094"
+        device.mlag.peer_address = "10.255.255.2"
+        self.assertFalse(grade_lab(device, lab)["passed"])
+
+        device.mlag.peer_link = "Port-Channel100"
+        grade = grade_lab(device, lab, ["show mlag", "show running-config"])
+        self.assertTrue(grade["passed"])
+        self.assertEqual(grade["process_passed_count"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()
