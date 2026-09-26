@@ -53,6 +53,7 @@ class CampusSession(Session):
 
 class Campus:
     def __init__(self, fault=""):
+        self.fault = fault
         self.sessions = {name: CampusSession(self, name) for name in SWITCHES}
         self.mac = {name: {} for name in SWITCHES}
         self.arp = {name: {} for name in HOSTS}
@@ -158,8 +159,11 @@ class Campus:
         process = [
             {"label": "Tested host connectivity", "passed": "host_ping" in self.evidence},
             {"label": "Mapped an uplink with LLDP", "passed": any(command.startswith("show lldp") for command in histories)},
-            {"label": "Inspected trunk state", "passed": any(command.startswith("show interfaces trunk") for command in histories)},
         ]
+        if self.fault == "access":
+            process.append({"label": "Inspected interface status", "passed": any(command.startswith("show interfaces status") for command in histories)})
+        else:
+            process.append({"label": "Inspected trunk state", "passed": any(command.startswith("show interfaces trunk") for command in histories)})
         return {"results": results, "passed": all(r["passed"] for r in results), "passed_count": sum(r["passed"] for r in results), "total_count": len(results), "process": process, "process_passed_count": sum(r["passed"] for r in process), "process_total_count": len(process)}
 
     def view(self):

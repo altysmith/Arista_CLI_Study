@@ -77,6 +77,14 @@ class CampusTests(unittest.TestCase):
             resumed = LabApplication(path)
             self.assertEqual(resumed.grade(sid)["process_passed_count"], 3)
 
+    def test_access_ticket_rewards_interface_evidence_not_trunk_evidence(self):
+        campus = Campus("access")
+        campus.ping("STAFF-A", "STAFF-B")
+        cli = campus.sessions["ACCESS-A"]
+        for command in ["enable", "show lldp neighbors", "show interfaces status"]:
+            cli.execute(command)
+        self.assertEqual(campus.grade()["process_passed_count"], 3)
+
     def test_server_restart_resumes_all_switches_and_reset_persists(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "progress.sqlite3"
