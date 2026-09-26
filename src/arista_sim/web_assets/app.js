@@ -574,7 +574,7 @@ document.querySelector("#ping-form").addEventListener("submit", async event => {
     document.querySelector("#ping-result").textContent = result.output;
     const timeline = document.querySelector("#ping-route-timeline");
     timeline.hidden = !result.timeline;
-    if (result.timeline) timeline.replaceChildren(...result.timeline.flatMap(item => [Object.assign(document.createElement("p"), {textContent: item.direction}), ...item.routes.map(route => Object.assign(document.createElement("p"), {textContent: `↳ ${route.source} ${route.prefix} via ${route.via} · ${route.reason}`}))]));
+    if (result.timeline) timeline.replaceChildren(...result.timeline.flatMap(item => [Object.assign(document.createElement("p"), {textContent: item.direction}), ...item.routes.map(route => Object.assign(document.createElement("p"), {textContent: `↳ ${route.source} ${route.prefix} via ${route.via} · ${route.reason}`})), ...(item.failure ? [Object.assign(document.createElement("p"), {textContent: `↳ first blocker: ${item.failure}`})] : [])]));
     renderCampus(result.campus, result.active);
   } catch (error) { document.querySelector("#ping-result").textContent = error.message; }
   finally { state.busy = false; labSelect.disabled = false; }

@@ -87,6 +87,11 @@ class CampusTests(unittest.TestCase):
         self.assertEqual(timeline[0]["direction"], "SITE-A → SITE-B")
         self.assertEqual(timeline[0]["routes"][0]["prefix"], "10.20.20.0/24")
 
+    def test_failed_routed_ping_returns_the_first_blocker_timeline(self):
+        result = RoutedCampus("next-hop").ping("SITE-A", "SITE-B")
+        self.assertIn("next hop is not directly reachable", result["timeline"][0]["failure"])
+        self.assertEqual(result["timeline"][0]["routes"][0]["source"], "static")
+
     def test_routed_campus_ticket_uses_the_browser_session_and_resumes(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "progress.sqlite3"

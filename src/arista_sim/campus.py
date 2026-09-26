@@ -484,7 +484,11 @@ class RoutedCampus:
             timeline = [{"direction": f"{source} → {destination}", "routes": [decision for node in forward_path if node in self.sessions and (decision := self.route_decision(node, destination_ip))]}, {"direction": f"{destination} → {source}", "routes": [decision for node in reverse_path if node in self.sessions and (decision := self.route_decision(node, source_ip))]}]
             return {"success": True, "output": f"{source} → {destination}: reply received (simulated IPv4). Path: " + " → ".join(forward_path), "timeline": timeline}
         detail = reason if not forward else f"return path failed: {reverse_reason}"
-        return {"success": False, "output": f"{source} → {destination}: request timed out; {detail}."}
+        failed_path = forward_path if not forward else reverse_path
+        failed_destination = str(ip_interface(ROUTED_HOSTS[destination if not forward else source][2]).ip)
+        direction = f"{source} → {destination}" if not forward else f"{destination} → {source}"
+        timeline = [{"direction": direction, "routes": [decision for node in failed_path if node in self.sessions and (decision := self.route_decision(node, failed_destination))], "failure": detail}]
+        return {"success": False, "output": f"{source} → {destination}: request timed out; {detail}.", "timeline": timeline}
 
     def grade(self):
         if self.fault == "ospf-source":
