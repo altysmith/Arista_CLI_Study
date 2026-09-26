@@ -2,12 +2,12 @@
   {
     "id": "subnet-local-or-remote", "title": "Subnet: local or remote?", "topic_id": "ipv4-local-delivery", "mode": "analyze", "priority": "high",
     "hints": ["Compare both addresses using the local prefix.", "Matching network portions mean local delivery."], "error_tags": ["concept", "dependency-missed"],
-    "variants": [{"id": "same-24", "prompt": "A host is 10.10.20.15/24 and sends to 10.10.20.200. Is the destination local or remote? Answer local or remote.", "answer": "local", "explanation": "Both addresses are in 10.10.20.0/24, so the host delivers directly after resolving the destination MAC."}]
+    "variants": [{"id": "same-24", "prompt": "A host is 10.10.20.15/24 and sends to 10.10.20.200. Is the destination local or remote? Answer local or remote.", "answer": "local", "explanation": "Both addresses are in 10.10.20.0/24, so the host delivers directly after resolving the destination MAC."}, {"id": "different-24", "prompt": "A host is 192.168.40.10/24 and sends to 192.168.41.10. Is the destination local or remote? Answer local or remote.", "answer": "remote", "explanation": "The addresses are in different /24 networks, so the host sends through its default gateway."}]
   },
   {
     "id": "arp-next-hop", "title": "ARP: choose the next hop", "topic_id": "ipv4-local-delivery", "mode": "analyze", "priority": "high",
     "hints": ["First decide whether the destination is on the local subnet.", "For remote traffic, ARP resolves the local gateway."], "error_tags": ["concept", "dependency-missed"],
-    "variants": [{"id": "remote-server", "prompt": "Host 10.10.10.2/24 uses gateway 10.10.10.1 and sends to 10.200.10.8. Which IP does it ARP for?", "answer": "10.10.10.1", "explanation": "The server is remote, so the host resolves the MAC address of its local next hop, the default gateway."}]
+    "variants": [{"id": "remote-server", "prompt": "Host 10.10.10.2/24 uses gateway 10.10.10.1 and sends to 10.200.10.8. Which IP does it ARP for?", "answer": "10.10.10.1", "explanation": "The server is remote, so the host resolves the MAC address of its local next hop, the default gateway."}, {"id": "local-server", "prompt": "Host 172.16.5.10/24 sends to 172.16.5.50. Which IP does it ARP for?", "answer": "172.16.5.50", "explanation": "The destination is local to the /24, so ARP resolves the destination host's MAC address directly."}]
   },
   {
     "id": "vlan-trunk-mismatch", "title": "Trunk VLAN preservation", "topic_id": "vlan-trunks", "mode": "troubleshoot", "priority": "very_high", "lab_id": "trunk-add-vlan",
@@ -17,7 +17,7 @@
   {
     "id": "route-selection", "title": "Route selection", "topic_id": "route-selection", "mode": "analyze", "priority": "very_high",
     "hints": ["Prefer the longest matching prefix.", "Only compare administrative distance after prefix length."], "error_tags": ["route-selection"],
-    "variants": [{"id": "longest-prefix", "prompt": "Routes exist for 10.0.0.0/8 and 10.20.0.0/16. Which route matches destination 10.20.8.5? Answer the prefix.", "answer": "10.20.0.0/16", "explanation": "Both routes match, but /16 is the longest prefix and therefore wins."}]
+    "variants": [{"id": "longest-prefix", "prompt": "Routes exist for 10.0.0.0/8 and 10.20.0.0/16. Which route matches destination 10.20.8.5? Answer the prefix.", "answer": "10.20.0.0/16", "explanation": "Both routes match, but /16 is the longest prefix and therefore wins."}, {"id": "host-route", "prompt": "Routes exist for 192.0.2.0/24 and 192.0.2.18/32. Which route matches destination 192.0.2.18? Answer the prefix.", "answer": "192.0.2.18/32", "explanation": "A /32 host route is more specific than the matching /24 route."}]
   },
   {
     "id": "ospf-neighbor-missing", "title": "OSPF neighbor evidence", "topic_id": "ospf-workflow", "mode": "verify", "priority": "very_high",

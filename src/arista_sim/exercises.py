@@ -96,7 +96,9 @@ def choose_study_now(progress: list[dict[str, Any]], now: datetime | None = None
     if not ranked:
         raise ValueError("No practice family matches that topic and mode")
     _, family, reason, factors = max(ranked, key=lambda item: (item[0], item[1]["id"]))
-    return public_exercise(family, family["variants"][0], reason, factors)
+    attempts = int(progress_by_skill.get((family["topic_id"], family["mode"]), {}).get("attempts", 0))
+    variant = family["variants"][attempts % len(family["variants"])]
+    return public_exercise(family, variant, reason, factors)
 
 
 def _topic_need(topic_id: str, progress_by_skill: dict[tuple[str, str], dict[str, Any]]) -> float:
