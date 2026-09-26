@@ -10,7 +10,7 @@
     "variants": [{"id": "remote-server", "prompt": "Host 10.10.10.2/24 uses gateway 10.10.10.1 and sends to 10.200.10.8. Which IP does it ARP for?", "answer": "10.10.10.1", "explanation": "The server is remote, so the host resolves the MAC address of its local next hop, the default gateway."}]
   },
   {
-    "id": "vlan-trunk-mismatch", "title": "Trunk VLAN preservation", "topic_id": "vlan-trunks", "mode": "troubleshoot", "priority": "very_high",
+    "id": "vlan-trunk-mismatch", "title": "Trunk VLAN preservation", "topic_id": "vlan-trunks", "mode": "troubleshoot", "priority": "very_high", "lab_id": "trunk-add-vlan",
     "hints": ["Compare allowed VLANs at both ends.", "Adding differs from replacing an allowed list."], "error_tags": ["wrong-command", "dependency-missed"],
     "variants": [{"id": "missing-vlan-20", "prompt": "A trunk currently allows VLANs 10 and 99, but students in VLAN 20 cannot cross it. What EOS command adds VLAN 20 without removing existing VLANs?", "answer": "switchport trunk allowed vlan add 20", "explanation": "The add form preserves VLANs 10 and 99 while allowing VLAN 20."}]
   },
@@ -40,7 +40,7 @@
     "variants": [{"id": "save-for-reboot", "prompt": "A configuration works now but must survive a reboot. Which EOS command saves it?", "answer": "copy running-config startup-config", "explanation": "The running configuration is active now; copying it to startup-config preserves it across a reboot."}]
   },
   {
-    "id": "interface-evidence", "title": "Interface evidence first", "topic_id": "eos-interface-workflow", "mode": "troubleshoot", "priority": "high",
+    "id": "interface-evidence", "title": "Interface evidence first", "topic_id": "eos-interface-workflow", "mode": "troubleshoot", "priority": "high", "lab_id": "access-vlan-basics",
     "hints": ["Start with the lowest unproven dependency.", "Use the concise interface state view before changing configuration."], "error_tags": ["wrong-command", "dependency-missed"],
     "variants": [{"id": "check-link-state", "prompt": "A VLAN user is offline and link state has not been proven. Which command gives a concise status view of all interfaces?", "answer": "show interfaces status", "explanation": "show interfaces status is an efficient first check for administrative and link-state evidence before assuming a VLAN fault."}]
   },
@@ -50,7 +50,7 @@
     "variants": [{"id": "passive-passive", "prompt": "Two switches use LACP passive on both ends of a port-channel. Will the LACP bundle form? Answer yes or no.", "answer": "no", "explanation": "Passive/passive provides no initiator, so LACP negotiation does not form the bundle. Active/passive or active/active can form it."}]
   },
   {
-    "id": "mlag-peer-versus-downstream", "title": "MLAG role distinction", "topic_id": "stp-lacp-mlag", "mode": "analyze", "priority": "very_high",
+    "id": "mlag-peer-versus-downstream", "title": "MLAG role distinction", "topic_id": "stp-lacp-mlag", "mode": "analyze", "priority": "very_high", "lab_id": "mlag-campus-repair",
     "hints": ["One port-channel connects the two peers.", "Another can connect a dual-attached downstream device."], "error_tags": ["concept", "wrong-interface"],
     "variants": [{"id": "peer-link-role", "prompt": "In an MLAG design, what connects the two MLAG peer switches: the peer link or the downstream MLAG port-channel?", "answer": "peer link", "explanation": "The peer link connects the two peers. A downstream MLAG port-channel connects a dual-attached device to the peer pair."}]
   },

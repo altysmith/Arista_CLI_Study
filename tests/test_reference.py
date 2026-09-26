@@ -60,6 +60,7 @@ class CommandReferenceTests(unittest.TestCase):
         result = evaluate_attempt("arp-next-hop", "remote-server", "10.10.10.1")
         self.assertTrue(result["correct"])
         self.assertTrue(evaluate_attempt("static-default-route", "gateway-192-0-2-1", "ip route 0.0.0.0/0 192.0.2.1")["correct"])
+        self.assertEqual(choose_study_now([], topic_id="stp-lacp-mlag", mode="analyze")["lab_id"], "mlag-campus-repair")
 
     def test_study_now_exposes_adaptive_factors(self):
         selected = choose_study_now([{"topic_id": "ospf-workflow", "mode": "verify", "mastery": 20, "attempts": 3, "recent_error_rate": 1, "last_practiced_at": "2026-09-01 00:00:00"}], datetime(2026, 9, 25, tzinfo=timezone.utc))

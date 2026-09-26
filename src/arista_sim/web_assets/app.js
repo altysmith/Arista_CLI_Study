@@ -324,6 +324,13 @@ document.querySelector("#practice-picker").addEventListener("submit", async even
   } catch (error) { document.querySelector("#exercise-result").textContent = error.message; }
 });
 
+document.querySelector("#supporting-lab").addEventListener("click", async event => {
+  const labId = event.currentTarget.dataset.labId;
+  if (!labId || state.busy) return;
+  await startSession(labId);
+  document.querySelector(".lab-card").scrollIntoView({behavior: "smooth", block: "start"});
+});
+
 document.querySelector("#clear-terminal").addEventListener("click", () => {
   output.replaceChildren();
   input.focus();
@@ -435,6 +442,9 @@ function renderExercise(exercise) {
   document.querySelector("#study-reason").textContent = exercise.reason;
   document.querySelector("#exercise-mode").textContent = `${exercise.mode} · ${exercise.topic_id}`;
   document.querySelector("#exercise-prompt").textContent = exercise.prompt;
+  const labButton = document.querySelector("#supporting-lab");
+  labButton.hidden = !exercise.lab_id;
+  labButton.dataset.labId = exercise.lab_id || "";
   document.querySelector("#exercise-answer").value = "";
   document.querySelector("#exercise-submit").disabled = false;
   document.querySelector("#exercise-result").textContent = "";

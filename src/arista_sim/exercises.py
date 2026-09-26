@@ -59,7 +59,7 @@ def validate_exercise_families(families: list[dict[str, Any]]) -> None:
 def public_exercise(family: dict[str, Any], variant: dict[str, Any], reason: str, factors: dict[str, float] | None = None) -> dict[str, Any]:
     return {
         "id": family["id"], "title": family["title"], "topic_id": family["topic_id"],
-        "mode": family["mode"], "variant_id": variant["id"], "prompt": variant["prompt"],
+        "mode": family["mode"], "variant_id": variant["id"], "prompt": variant["prompt"], "lab_id": family.get("lab_id"),
         "hints": family.get("hints", []), "reason": reason, "factors": factors or {},
     }
 
