@@ -64,6 +64,19 @@ class CampusTests(unittest.TestCase):
         self.assertTrue(grade["passed"])
         self.assertEqual(grade["process_passed_count"], 3)
 
+    def test_campus_evidence_survives_durable_resume(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "progress.sqlite3"
+            app = LabApplication(path)
+            session = app.create_session({"lab_id": "campus-trunk-ticket"})
+            sid = session["session_id"]
+            app.campus_action(sid, {"source": "STUDENT-A", "destination": "STUDENT-B"})
+            app.execute(sid, {"command": "enable"})
+            app.execute(sid, {"command": "show lldp neighbors"})
+            app.execute(sid, {"command": "show interfaces trunk"})
+            resumed = LabApplication(path)
+            self.assertEqual(resumed.grade(sid)["process_passed_count"], 3)
+
     def test_server_restart_resumes_all_switches_and_reset_persists(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "progress.sqlite3"

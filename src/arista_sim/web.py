@@ -45,7 +45,8 @@ class SessionStore:
         if self.database:
             self.database.save(session_id, current.lab_id, {
                 "cli": dump_cli(current.cli), "active": current.active,
-                "devices": {n: dump_cli(c) for n, c in current.campus.sessions.items()} if current.campus else None})
+                "devices": {n: dump_cli(c) for n, c in current.campus.sessions.items()} if current.campus else None,
+                "evidence": sorted(current.campus.evidence) if current.campus else None})
 
     def latest(self, lab_id):
         if self.database:
@@ -79,6 +80,7 @@ class SessionStore:
                 if current.campus:
                     for name, state in data["devices"].items():
                         restore_cli(state, current.campus.sessions[name])
+                    current.campus.evidence = set(data.get("evidence") or [])
                     current.active = data["active"]
                     current.cli = current.campus.sessions[current.active]
                 else:
