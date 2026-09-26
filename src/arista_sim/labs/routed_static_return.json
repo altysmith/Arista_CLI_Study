@@ -1,0 +1,12 @@
+{
+  "id": "routed-static-return-ticket",
+  "title": "Routed campus ticket: missing return path",
+  "summary": "Restore an end-to-end IPv4 path by finding and repairing the missing static return route.",
+  "difficulty": "Campus · Layer 3 break/fix",
+  "estimated_minutes": 18,
+  "brief": "SITE-A cannot reach SITE-B across a fictional three-router campus. The direct links and forward route are present, but the reply path is incomplete. Use the router consoles, LLDP, route tables, and host ping to locate the missing route. This bounded topology evaluates directly connected and static IPv4 routes only; it does not model OSPF adjacency or route exchange.",
+  "objectives": ["Restore SITE-A to SITE-B communication", "Restore the required return route", "Verify the routed path with host ping"],
+  "hints": ["Begin with a host ping, then identify the routers on the path with LLDP.", "A reply needs a route back to the source subnet.", "Use show ip route before adding a route; the missing route belongs on EDGE-B."],
+  "campus_fault": "routing",
+  "checks": []
+}

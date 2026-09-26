@@ -1,4 +1,5 @@
 import json
+import tempfile
 import threading
 import unittest
 from urllib.error import HTTPError
@@ -47,8 +48,9 @@ class WebTests(unittest.TestCase):
         status, content_type, body = self.request("/")
         self.assertEqual(status, 200)
         self.assertIn("text/html", content_type)
-        self.assertIn(b"Arista CLI Lab", body)
+        self.assertIn(b"Arista CLI Practice Lab", body)
         self.assertIn(b"Command reference", body)
+        self.assertIn(b"Practice a specific skill", body)
 
         status, _, body = self.request("/api/labs")
         catalog = json.loads(body)
@@ -67,6 +69,22 @@ class WebTests(unittest.TestCase):
             for item in category["commands"]
         ]
         self.assertIn("show interfaces trunk", commands)
+
+        status, _, body = self.request("/api/exercises")
+        choices = json.loads(body)["exercises"]
+        self.assertEqual(status, 200)
+        self.assertIn("arp-next-hop", [choice["id"] for choice in choices])
+
+        status, _, body = self.request("/api/study-now?topic_id=ipv4-local-delivery&mode=analyze")
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body)["id"], "subnet-local-or-remote")
+
+        status, _, body = self.request("/api/curriculum")
+        curriculum = json.loads(body)
+        self.assertEqual(status, 200)
+        self.assertEqual(curriculum["version"], 1)
+        self.assertEqual(len(curriculum["sections"]), 5)
+        self.assertEqual(curriculum["sections"][0]["id"], "advanced-networking-concepts")
 
     def test_terminal_api_preserves_prompts_and_state(self):
         session = self.create_session()
@@ -168,6 +186,28 @@ class WebTests(unittest.TestCase):
             urlopen(request, timeout=2)
         self.assertEqual(context.exception.code, 403)
         context.exception.close()
+
+    def test_study_now_and_durable_exercise_attempt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            server = create_server(port=0, data_path=f"{directory}/progress.sqlite3")
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                base_url = f"http://127.0.0.1:{server.server_port}"
+                with urlopen(base_url + "/api/study-now", timeout=2) as response:
+                    exercise = json.loads(response.read())
+                self.assertEqual(exercise["id"], "vlan-trunk-mismatch")
+                request = Request(base_url + "/api/exercises/acl-first-match/attempts", data=json.dumps({"variant_id": "specific-before-general", "answer": "permitted", "hints_used": 0}).encode("utf-8"), headers={"Content-Type": "application/json"})
+                with urlopen(request, timeout=2) as response:
+                    attempt = json.loads(response.read())
+                self.assertTrue(attempt["correct"])
+                self.assertEqual(attempt["progress"]["mastery"], 100.0)
+                with urlopen(base_url + "/api/progress", timeout=2) as response:
+                    self.assertEqual(json.loads(response.read())["skills"][0]["topic_id"], "acl-workflow")
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=2)
 
 
 if __name__ == "__main__":

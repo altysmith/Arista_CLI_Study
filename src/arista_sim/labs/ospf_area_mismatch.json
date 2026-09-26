@@ -1,0 +1,12 @@
+{
+  "id": "ospf-area-mismatch-ticket",
+  "title": "Routed campus ticket: OSPF area mismatch",
+  "summary": "Restore the failed EDGE-B adjacency by correcting its interface area.",
+  "difficulty": "Campus · OSPF adjacency",
+  "estimated_minutes": 20,
+  "brief": "EDGE-A and CORE-1 form a Full OSPF adjacency, but EDGE-B has no neighbor. Use the three-router topology, show ip ospf neighbor, and show ip ospf interface brief to find the incompatible area on the CORE-1 to EDGE-B link. This lab models only basic adjacency eligibility and Full state; it does not model LSAs, route exchange, DR/BDR election, timers, authentication, or traffic.",
+  "objectives": ["Identify the OSPF area mismatch", "Restore a Full adjacency between CORE-1 and EDGE-B", "Verify the neighbor and interface state"],
+  "hints": ["Compare the OSPF interface area on both sides of the failing link.", "A Full neighbor requires compatible interface participation and area.", "Remove the wrong network-area assignment before adding the corrected one."],
+  "campus_fault": "ospf-area",
+  "checks": []
+}

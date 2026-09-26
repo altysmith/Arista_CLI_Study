@@ -21,6 +21,11 @@
     "Assign mlag 10 in the downstream port-channel interface. Use the allowed VLAN add command to preserve the existing VLAN.",
     "show interfaces trunk and show running-config help verify preserved settings. In this simulator, show mlag is a configuration summary, not a negotiated peer status."
   ],
+  "process_checks": [
+    {"command": "show running-config", "label": "Inspected the running configuration"},
+    {"command": "show mlag", "label": "Inspected local MLAG configuration state"},
+    {"command": "show port-channel", "label": "Inspected port-channel membership"}
+  ],
   "setup_commands": [
     "enable",
     "configure terminal",

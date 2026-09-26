@@ -2,11 +2,111 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from arista_sim.campus import Campus
+from arista_sim.campus import Campus, RoutedCampus
 from arista_sim.web import LabApplication
 
 
 class CampusTests(unittest.TestCase):
+    def test_routed_campus_requires_a_static_return_route(self):
+        campus = RoutedCampus()
+        self.assertFalse(campus.ping("SITE-A", "SITE-B")["success"])
+        self.assertIn("return path failed", campus.ping("SITE-A", "SITE-B")["output"])
+        edge_b = campus.sessions["EDGE-B"]
+        for command in ["enable", "show lldp neighbors", "show ip route", "configure terminal", "ip route 10.10.10.0/24 198.51.100.1", "end"]:
+            self.assertFalse(edge_b.execute(command).startswith("%"))
+        self.assertTrue(campus.ping("SITE-A", "SITE-B")["success"])
+        self.assertTrue(campus.grade()["passed"])
+        self.assertEqual(campus.grade()["process_passed_count"], 3)
+
+    def test_routed_campus_rejects_an_unreachable_next_hop_until_repaired(self):
+        campus = RoutedCampus("next-hop")
+        edge_a = next(device for device in campus.view()["devices"] if device["name"] == "EDGE-A")
+        self.assertIn({"prefix": "10.20.20.0/24", "next_hop": "192.0.2.6"}, edge_a["routes"])
+        self.assertFalse(campus.ping("SITE-A", "SITE-B")["success"])
+        self.assertIn("next hop is not directly reachable", campus.ping("SITE-A", "SITE-B")["output"])
+        edge_a = campus.sessions["EDGE-A"]
+        for command in ["enable", "show lldp neighbors", "show ip route", "configure terminal", "no ip route 10.20.20.0/24 192.0.2.6", "ip route 10.20.20.0/24 192.0.2.2", "end"]:
+            self.assertFalse(edge_a.execute(command).startswith("%"))
+        self.assertTrue(campus.ping("SITE-A", "SITE-B")["success"])
+        self.assertTrue(campus.grade()["passed"])
+
+    def test_routed_campus_models_ospf_area_compatibility(self):
+        campus = RoutedCampus("ospf-area")
+        self.assertIn("FULL/-", campus.sessions["CORE-1"].execute("show ip ospf neighbor"))
+        self.assertIn("area mismatch", campus.sessions["EDGE-B"].execute("show ip ospf neighbor"))
+        edge_b = campus.sessions["EDGE-B"]
+        for command in ["enable", "show ip ospf interface brief", "configure terminal", "router ospf 1", "no network 198.51.100.0/30 area 1", "network 198.51.100.0/30 area 0", "end", "show ip ospf neighbor"]:
+            self.assertFalse(edge_b.execute(command).startswith("%"))
+        self.assertIn("FULL/-", edge_b.execute("show ip ospf neighbor"))
+        self.assertTrue(campus.grade()["passed"])
+
+    def test_routed_campus_models_ospf_route_advertisement_after_full_adjacency(self):
+        campus = RoutedCampus("ospf-route")
+        self.assertIn("FULL/-", campus.sessions["EDGE-A"].execute("show ip ospf neighbor"))
+        self.assertNotIn("O        10.20.20.0/24", campus.sessions["EDGE-A"].execute("show ip route"))
+        self.assertFalse(campus.ping("SITE-A", "SITE-B")["success"])
+        edge_b = campus.sessions["EDGE-B"]
+        for command in ["enable", "configure terminal", "router ospf 1", "network 10.20.20.0/24 area 0", "end"]:
+            self.assertFalse(edge_b.execute(command).startswith("%"))
+        self.assertIn("O        10.20.20.0/24", campus.sessions["EDGE-A"].execute("show ip route"))
+        self.assertTrue(campus.ping("SITE-A", "SITE-B")["success"])
+        self.assertTrue(campus.grade()["passed"])
+
+    def test_routed_campus_requires_an_operational_link_for_ospf(self):
+        campus = RoutedCampus("ospf-link")
+        edge_b = campus.sessions["EDGE-B"]
+        self.assertIn("link down", edge_b.execute("show ip ospf neighbor"))
+        self.assertIn("Down", edge_b.execute("show ip ospf interface brief"))
+        for command in ["enable", "configure terminal", "interface Ethernet1", "no shutdown", "end", "show ip ospf neighbor"]:
+            self.assertFalse(edge_b.execute(command).startswith("%"))
+        self.assertTrue(campus.ping("SITE-A", "SITE-B")["success"])
+        self.assertTrue(campus.grade()["passed"])
+
+    def test_more_specific_ospf_route_wins_over_broader_static_route(self):
+        campus = RoutedCampus("ospf-specificity")
+        route_table = campus.sessions["EDGE-A"].execute("show ip route")
+        self.assertIn("S        10.20.0.0/16", route_table)
+        self.assertIn("O        10.20.20.0/24", route_table)
+        self.assertTrue(campus.ping("SITE-A", "SITE-B")["success"])
+
+    def test_static_route_wins_when_the_prefix_length_ties(self):
+        campus = RoutedCampus("ospf-source")
+        edge_a = next(device for device in campus.view()["devices"] if device["name"] == "EDGE-A")
+        self.assertIn({"destination": "10.20.20.10", "prefix": "10.20.20.0/24", "source": "static", "via": "192.0.2.6", "reason": "source preference after an equal-prefix tie"}, edge_a["decisions"])
+        self.assertFalse(campus.ping("SITE-A", "SITE-B")["success"])
+        edge_a = campus.sessions["EDGE-A"]
+        self.assertIn("S        10.20.20.0/24", edge_a.execute("show ip route"))
+        for command in ["enable", "configure terminal", "no ip route 10.20.20.0/24 192.0.2.6", "end"]:
+            self.assertFalse(edge_a.execute(command).startswith("%"))
+        self.assertTrue(campus.ping("SITE-A", "SITE-B")["success"])
+        self.assertTrue(campus.grade()["passed"])
+
+    def test_successful_routed_ping_returns_a_route_decision_timeline(self):
+        campus = RoutedCampus("ospf-specificity")
+        timeline = campus.ping("SITE-A", "SITE-B")["timeline"]
+        self.assertEqual(timeline[0]["direction"], "SITE-A → SITE-B")
+        self.assertEqual(timeline[0]["routes"][0]["prefix"], "10.20.20.0/24")
+
+    def test_failed_routed_ping_returns_the_first_blocker_timeline(self):
+        result = RoutedCampus("next-hop").ping("SITE-A", "SITE-B")
+        self.assertIn("next hop is not directly reachable", result["timeline"][0]["failure"])
+        self.assertEqual(result["timeline"][0]["routes"][0]["source"], "static")
+
+    def test_routed_campus_ticket_uses_the_browser_session_and_resumes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "progress.sqlite3"
+            app = LabApplication(path)
+            created = app.create_session({"lab_id": "routed-static-return-ticket"})
+            self.assertEqual(created["active"], "EDGE-A")
+            sid = created["session_id"]
+            app.campus_action(sid, {"device": "EDGE-B"})
+            for command in ["enable", "configure terminal", "ip route 10.10.10.0/24 198.51.100.1", "end"]:
+                app.execute(sid, {"command": command})
+            self.assertTrue(app.campus_action(sid, {"source": "SITE-A", "destination": "SITE-B"})["success"])
+            resumed = LabApplication(path).create_session({"lab_id": "routed-static-return-ticket", "resume": True})
+            self.assertEqual(resumed["active"], "EDGE-B")
+            self.assertTrue(LabApplication(path).grade(resumed["session_id"])["passed"])
+
     def test_healthy_forwarding_learns_mac_and_host_arp(self):
         campus = Campus()
         self.assertTrue(campus.grade()["passed"])
@@ -53,6 +153,37 @@ class CampusTests(unittest.TestCase):
         campus.grade()
         self.assertTrue(all(not entries for entries in campus.mac.values()))
         self.assertTrue(all(not entries for entries in campus.arp.values()))
+
+    def test_campus_grade_reports_evidence_without_blocking_a_correct_repair(self):
+        campus = Campus("trunk")
+        campus.ping("STUDENT-A", "STUDENT-B")
+        cli = campus.sessions["ACCESS-B"]
+        for command in ["enable", "show lldp neighbors", "show interfaces trunk", "configure terminal", "interface Ethernet48", "switchport trunk allowed vlan add 20", "end"]:
+            cli.execute(command)
+        grade = campus.grade()
+        self.assertTrue(grade["passed"])
+        self.assertEqual(grade["process_passed_count"], 3)
+
+    def test_campus_evidence_survives_durable_resume(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "progress.sqlite3"
+            app = LabApplication(path)
+            session = app.create_session({"lab_id": "campus-trunk-ticket"})
+            sid = session["session_id"]
+            app.campus_action(sid, {"source": "STUDENT-A", "destination": "STUDENT-B"})
+            app.execute(sid, {"command": "enable"})
+            app.execute(sid, {"command": "show lldp neighbors"})
+            app.execute(sid, {"command": "show interfaces trunk"})
+            resumed = LabApplication(path)
+            self.assertEqual(resumed.grade(sid)["process_passed_count"], 3)
+
+    def test_access_ticket_rewards_interface_evidence_not_trunk_evidence(self):
+        campus = Campus("access")
+        campus.ping("STAFF-A", "STAFF-B")
+        cli = campus.sessions["ACCESS-A"]
+        for command in ["enable", "show lldp neighbors", "show interfaces status"]:
+            cli.execute(command)
+        self.assertEqual(campus.grade()["process_passed_count"], 3)
 
     def test_server_restart_resumes_all_switches_and_reset_persists(self):
         with tempfile.TemporaryDirectory() as folder:

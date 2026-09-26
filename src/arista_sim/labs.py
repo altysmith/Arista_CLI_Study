@@ -29,19 +29,26 @@ def get_lab(lab_id: str) -> dict[str, Any]:
 
 
 def public_lab(lab: dict[str, Any]) -> dict[str, Any]:
-    private_keys = {"checks", "setup_commands", "campus_fault"}
+    private_keys = {"checks", "setup_commands", "campus_fault", "process_checks"}
     return {key: value for key, value in lab.items() if key not in private_keys}
 
 
-def grade_lab(device: DeviceState, lab: dict[str, Any]) -> dict[str, Any]:
+def grade_lab(device: DeviceState, lab: dict[str, Any], history: list[str] | None = None) -> dict[str, Any]:
     results = [_grade_check(device, check) for check in lab["checks"]]
     passed_count = sum(result["passed"] for result in results)
-    return {
-        "passed": passed_count == len(results),
+    checks = lab.get("process_checks", [])
+    commands = [command.casefold() for command in history or []]
+    process = [{"label": check["label"], "passed": any(command.startswith(check["command"].casefold()) for command in commands)} for check in checks]
+    process_complete = not checks or all(item["passed"] for item in process)
+    grade = {
+        "passed": passed_count == len(results) and (process_complete or not lab.get("require_process_checks")),
         "passed_count": passed_count,
         "total_count": len(results),
         "results": results,
     }
+    if checks:
+        grade.update({"process": process, "process_passed_count": sum(item["passed"] for item in process), "process_total_count": len(process)})
+    return grade
 
 
 def _grade_check(device: DeviceState, check: dict[str, Any]) -> dict[str, Any]:
@@ -50,6 +57,9 @@ def _grade_check(device: DeviceState, check: dict[str, Any]) -> dict[str, Any]:
 
     if check_type == "vlan_exists":
         passed = int(check["vlan"]) in device.vlans
+    elif check_type == "device_attribute":
+        attribute = str(check["attribute"])
+        passed = attribute in device.__dataclass_fields__ and getattr(device, attribute) == check["equals"]
     elif check_type == "vlan_name":
         vlan = device.vlans.get(int(check["vlan"]))
         passed = vlan is not None and vlan.name == check["equals"]
@@ -71,6 +81,29 @@ def _grade_check(device: DeviceState, check: dict[str, Any]) -> dict[str, Any]:
             and attribute in interface.__dataclass_fields__
             and actual == expected
         )
+    elif check_type == "static_route":
+        passed = any(route.prefix == check["prefix"] and route.next_hop == check["next_hop"] for route in device.static_routes)
+    elif check_type == "ospf_process":
+        process = device.ospf_processes.get(int(check["process_id"]))
+        passed = process is not None and process.router_id == check["router_id"] and (check["network"], check["area"]) in process.networks
+    elif check_type == "access_list_entries":
+        access_list = device.access_lists.get(str(check["name"]))
+        passed = access_list is not None and access_list.entries == check["entries"]
+    elif check_type == "interface_access_group":
+        interface = device.interfaces.get(str(check["interface"]))
+        passed = interface is not None and interface.ip_access_groups.get(str(check["direction"])) == check["name"]
+    elif check_type == "dhcp_snooping_vlans":
+        passed = device.dhcp_snooping_enabled and set(check["vlans"]).issubset(device.dhcp_snooping_vlans)
+    elif check_type == "class_map_access_group":
+        class_map = device.class_maps.get(str(check["name"]))
+        passed = class_map is not None and class_map.access_group == check["access_group"]
+    elif check_type == "policy_class_action":
+        policy = device.policy_maps.get(str(check["policy"]))
+        policy_class = policy.classes.get(str(check["class_name"])) if policy is not None else None
+        passed = policy_class is not None and check["action"] in policy_class.actions
+    elif check_type == "interface_service_policy":
+        interface = device.interfaces.get(str(check["interface"]))
+        passed = interface is not None and interface.service_policies.get(str(check["direction"])) == check["policy"]
     else:
         raise ValueError(f"Unsupported lab check type: {check_type}")
 

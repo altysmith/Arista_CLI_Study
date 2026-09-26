@@ -1,0 +1,9 @@
+{
+  "id": "static-default-route", "title": "Static default route", "summary": "Add and verify an IPv4 default route.", "difficulty": "Foundation", "estimated_minutes": 8,
+  "brief": "The training switch has a routed uplink to upstream gateway 192.0.2.1. Enable IPv4 routing, configure a default route through that next hop, and verify the route table. This validates local configuration and route-table state only; it does not simulate the remote router or end-to-end forwarding.",
+  "objectives": ["Enable IPv4 routing", "Configure 0.0.0.0/0 through 192.0.2.1", "Verify with show ip route"],
+  "hints": ["A default route uses 0.0.0.0/0.", "Use show ip route after the configuration."],
+  "setup_commands": ["enable", "configure terminal", "interface Ethernet1", "no switchport", "ip address 192.0.2.2/24", "no shutdown", "end", "disable"],
+  "process_checks": [{"command": "show ip route", "label": "Verified the IPv4 route table"}],
+  "checks": [{"type": "device_attribute", "attribute": "ip_routing", "equals": true, "label": "IPv4 routing is enabled"}, {"type": "static_route", "prefix": "0.0.0.0/0", "next_hop": "192.0.2.1", "label": "Default route uses upstream 192.0.2.1"}]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "ospf-link-down-ticket",
+  "title": "Routed campus ticket: OSPF link down",
+  "summary": "Restore a shut routed interface before treating OSPF as the problem.",
+  "difficulty": "Campus · OSPF troubleshooting",
+  "estimated_minutes": 18,
+  "brief": "The OSPF network statements and areas are already compatible, but EDGE-B has no neighbor and SITE-A cannot reach SITE-B. Start with interface and neighbor evidence, then restore the routed link. This model derives interface participation, Full adjacency, selected OSPF prefixes, and forwarding; it does not simulate timers, authentication, DR/BDR, metrics, or packet loss.",
+  "objectives": ["Identify the down routed interface", "Restore the CORE-1 to EDGE-B adjacency", "Verify the recovered OSPF path with host ping"],
+  "hints": ["A correct network statement cannot form a neighbor over a shut interface.", "Compare show ip ospf interface brief with show ip ospf neighbor.", "Use the interface configuration mode to restore the link."],
+  "campus_fault": "ospf-link",
+  "checks": []
+}

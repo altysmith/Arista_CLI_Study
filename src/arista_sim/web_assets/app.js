@@ -8,6 +8,12 @@ const state = {
   sections: [],
   labId: null,
   reference: null,
+  exerciseChoices: [],
+  exercise: null,
+  hintsUsed: 0,
+  exam: null,
+  examIndex: 0,
+  examAnswers: [],
   busy: false,
 };
 
@@ -130,11 +136,16 @@ async function startSession(labId) {
 
 async function initialize() {
   try {
-    const [catalog, reference] = await Promise.all([api("/api/labs"), api("/api/reference")]);
+    const [catalog, reference, exercise, exercises, progress, exam] = await Promise.all([api("/api/labs"), api("/api/reference"), api("/api/study-now"), api("/api/exercises"), api("/api/progress"), api("/api/exam")]);
     state.labs = catalog.labs;
     state.sections = catalog.sections || [];
     initializeSections();
     state.reference = reference;
+    state.exerciseChoices = exercises.exercises;
+    document.querySelector("#practice-choice").replaceChildren(...state.exerciseChoices.map(choice => new Option(`${choice.title} · ${choice.mode}`, choice.id)));
+    renderProgress(progress);
+    renderExercise(exercise);
+    if (exam.active) renderExam(exam.active);
     labSelect.replaceChildren(...state.labs.map((lab) => {
       const option = document.createElement("option");
       option.value = lab.id;
@@ -280,6 +291,50 @@ input.addEventListener("keydown", async (event) => {
   }
 });
 
+document.querySelector("#exercise-hints").addEventListener("toggle", event => {
+  if (event.currentTarget.open) state.hintsUsed = Math.max(1, state.hintsUsed);
+});
+
+document.querySelector("#exercise-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!state.exercise) return;
+  const button = document.querySelector("#exercise-submit");
+  button.disabled = true;
+  const result = document.querySelector("#exercise-result");
+  try {
+    const answer = document.querySelector("#exercise-answer").value;
+    const attempt = await api(`/api/exercises/${state.exercise.id}/attempts`, {
+      method: "POST",
+      body: JSON.stringify({variant_id: state.exercise.variant_id, answer, hints_used: state.hintsUsed}),
+    });
+    result.className = `exercise-result ${attempt.correct ? "correct" : "incorrect"}`;
+    result.textContent = `${attempt.correct ? "Correct." : "Not quite."} ${attempt.explanation} Mastery: ${attempt.progress.mastery}% (${attempt.progress.attempts} attempt${attempt.progress.attempts === 1 ? "" : "s"}).`;
+    const next = await api("/api/study-now");
+    renderProgress(await api("/api/progress"));
+    window.setTimeout(() => renderExercise(next), 900);
+  } catch (error) {
+    result.className = "exercise-result incorrect";
+    result.textContent = error.message;
+    button.disabled = false;
+  }
+});
+
+document.querySelector("#practice-picker").addEventListener("submit", async event => {
+  event.preventDefault();
+  const choice = state.exerciseChoices.find(item => item.id === document.querySelector("#practice-choice").value);
+  if (!choice) return;
+  try {
+    renderExercise(await api(`/api/study-now?topic_id=${encodeURIComponent(choice.topic_id)}&mode=${encodeURIComponent(choice.mode)}`));
+  } catch (error) { document.querySelector("#exercise-result").textContent = error.message; }
+});
+
+document.querySelector("#supporting-lab").addEventListener("click", async event => {
+  const labId = event.currentTarget.dataset.labId;
+  if (!labId || state.busy) return;
+  await startSession(labId);
+  document.querySelector(".lab-card").scrollIntoView({behavior: "smooth", block: "start"});
+});
+
 document.querySelector("#clear-terminal").addEventListener("click", () => {
   output.replaceChildren();
   input.focus();
@@ -300,6 +355,9 @@ document.querySelector("#check-work").addEventListener("click", async () => {
     panel.hidden = false;
     panel.classList.toggle("complete", grade.passed);
     document.querySelector("#grade-title").textContent = grade.passed ? "Lab complete" : "Keep configuring";
+    const summary = document.querySelector("#grade-summary");
+    summary.hidden = !grade.passed;
+    if (grade.passed) summary.textContent = `Repair verified: ${grade.passed_count}/${grade.total_count} state checks passed${grade.process ? `; ${grade.process_passed_count}/${grade.process_total_count} troubleshooting evidence checks recorded.` : "."}`;
     document.querySelector("#progress-label").textContent = `${grade.passed_count} / ${grade.total_count}`;
     const results = document.querySelector("#grade-results");
     results.replaceChildren(...grade.results.map((result) => {
@@ -308,6 +366,7 @@ document.querySelector("#check-work").addEventListener("click", async () => {
       item.textContent = `${result.passed ? "✓" : "○"} ${result.label}`;
       return item;
     }));
+    if (grade.process) appendLine(`Troubleshooting evidence: ${grade.process_passed_count} / ${grade.process_total_count}`, "welcome");
   } catch (error) {
     appendLine(error.message, "error-line");
   } finally {
@@ -349,10 +408,42 @@ function renderCampus(campus, active) {
   document.querySelector("#campus-panel").hidden = !campus;
   document.querySelector("#device-title").textContent = active || "Training switch";
   if (!campus) return;
-  document.querySelectorAll("[data-device]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.device === active)));
-  campus.links.forEach((link, i) => {
-    document.querySelector(i ? "#link-b" : "#link-a").textContent = `${link.ap.replace("Ethernet", "Et")} ↔ ${link.bp.replace("Ethernet", "Et")} · ${link.up ? "up" : "down"}`;
-  });
+  document.querySelector("#topology-title").textContent = campus.title || "College access network";
+  document.querySelector("#topology-subtitle").textContent = campus.subtitle || "Fictional campus · Layer 2";
+  document.querySelector("#topology-limits").textContent = campus.limits || "Same-subnet traffic on this fixed, loop-free topology is simulated. Routing, STP convergence, LACP, MLAG, ACL enforcement, and traffic timing are not modeled. Learning tables clear on configuration changes and server restart. Switch ARP stays empty because no Layer 3 interface participates.";
+  document.querySelector("#topology-nodes").replaceChildren(...campus.switches.map(name => {
+    const button = document.createElement("button");
+    button.className = "node";
+    button.type = "button";
+    button.dataset.device = name;
+    button.setAttribute("aria-pressed", String(name === active));
+    button.append(name);
+    button.addEventListener("click", () => selectCampusDevice(name));
+    return button;
+  }));
+  document.querySelector("#topology-links").replaceChildren(...campus.links.map(link => {
+    const label = document.createElement("span");
+    label.textContent = `${link.a} ${link.ap.replace("Ethernet", "Et")} ↔ ${link.b} ${link.bp.replace("Ethernet", "Et")} · ${link.up ? "up" : "down"}`;
+    return label;
+  }));
+  const evidence = document.querySelector("#routing-evidence");
+  evidence.hidden = !campus.devices;
+  if (campus.devices) {
+    document.querySelector("#routing-evidence-cards").replaceChildren(...campus.devices.map(device => {
+      const card = document.createElement("article");
+      card.className = "routing-evidence-card";
+      const heading = document.createElement("h4");
+      heading.textContent = device.name;
+      const interfaces = document.createElement("p");
+      interfaces.textContent = `Interfaces: ${device.interfaces.map(item => `${item.name.replace("Ethernet", "Et")} ${item.addresses.join(", ")} (${item.up ? "up" : "down"})`).join(" · ") || "none"}`;
+      const routes = document.createElement("p");
+      routes.textContent = `Static routes: ${device.routes.map(route => `${route.prefix} via ${route.next_hop}`).join(" · ") || "none"}`;
+      const decisions = document.createElement("p");
+      decisions.textContent = `Selected: ${device.decisions.map(route => `${route.destination} → ${route.source} ${route.prefix} (${route.reason})`).join(" · ") || "no remote route"}`;
+      card.replaceChildren(heading, interfaces, routes, decisions);
+      return card;
+    }));
+  }
   const hosts = [...campus.hosts].sort((a,b) => a.port.localeCompare(b.port) || a.switch.localeCompare(b.switch));
   document.querySelector("#host-list").replaceChildren(...hosts.map(h => {
     const p = document.createElement("p");
@@ -363,18 +454,107 @@ function renderCampus(campus, active) {
     const select = document.getElementById(id);
     const previous = select.value;
     select.replaceChildren(...campus.hosts.map(h => new Option(h.id, h.id)));
-    select.value = previous || (id === "ping-source" ? "STAFF-A" : "STAFF-B");
+    select.value = campus.hosts.some(h => h.id === previous) ? previous : campus.hosts[id === "ping-source" ? 0 : 1]?.id;
   }
   document.querySelector("#host-arp").textContent = campus.hosts.map(h => `${h.id}: ${Object.entries(h.arp).map(([ip, mac]) => `${ip} → ${mac}`).join(", ") || "No learned entries"}`).join("\n");
 }
 
-document.querySelectorAll("[data-device]").forEach(button => button.addEventListener("click", async () => {
+function renderExam(exam) {
+  state.exam = exam;
+  const panel = document.querySelector("#exam-panel");
+  panel.hidden = false;
+  const question = exam.questions[state.examIndex];
+  document.querySelector("#exam-progress").textContent = `${state.examIndex + 1} / ${exam.question_count}`;
+  document.querySelector("#exam-prompt").textContent = question.prompt;
+  document.querySelector("#exam-answer").value = state.examAnswers[state.examIndex] || "";
+  document.querySelector("#exam-timer").textContent = `Started ${exam.started_at}. Hints are unavailable; submit every answer for the final review.`;
+  document.querySelector("#exam-result").textContent = "";
+  document.querySelector("#exam-next").textContent = state.examIndex + 1 === exam.question_count ? "Submit exam" : "Next question";
+  document.querySelector("#exam-answer").focus();
+}
+
+document.querySelector("#exam-start").addEventListener("click", async () => {
+  try { state.examIndex = 0; state.examAnswers = []; renderExam(await api("/api/exam", {method: "POST", body: "{}"})); }
+  catch (error) { document.querySelector("#exercise-result").textContent = error.message; }
+});
+
+document.querySelector("#exam-next").addEventListener("click", async () => {
+  if (!state.exam) return;
+  const answer = document.querySelector("#exam-answer").value.trim();
+  if (!answer) { document.querySelector("#exam-result").textContent = "Enter an answer before continuing."; return; }
+  state.examAnswers[state.examIndex] = answer;
+  if (state.examIndex + 1 < state.exam.question_count) { state.examIndex += 1; renderExam(state.exam); return; }
+  try {
+    const result = await api(`/api/exams/${state.exam.id}/submit`, {method: "POST", body: JSON.stringify({answers: state.examAnswers})});
+    const review = document.querySelector("#exam-result");
+    review.className = "exercise-result correct";
+    review.replaceChildren(document.createTextNode(`Score: ${result.score}/${result.total}. `));
+    if (!result.remediation.length) review.append("All covered topics passed.");
+    for (const item of result.remediation) {
+      const practice = document.createElement("button");
+      practice.type = "button";
+      practice.className = "secondary-button exam-review-action";
+      practice.textContent = `Practice ${item.topic_id} (${item.missed} missed)`;
+      practice.addEventListener("click", async () => renderExercise(await api(`/api/study-now?topic_id=${encodeURIComponent(item.topic_id)}&mode=${encodeURIComponent(item.mode)}`)));
+      review.append(practice);
+      if (item.lab_id) {
+        const lab = document.createElement("button");
+        lab.type = "button";
+        lab.className = "secondary-button exam-review-action";
+        lab.textContent = "Open supporting lab";
+        lab.addEventListener("click", () => startSession(item.lab_id));
+        review.append(lab);
+      }
+    }
+    document.querySelector("#exam-next").disabled = true;
+  } catch (error) { document.querySelector("#exam-result").className = "exercise-result incorrect"; document.querySelector("#exam-result").textContent = error.message; }
+});
+
+function renderProgress(progress) {
+  const mastery = document.querySelector("#mastery-summary");
+  mastery.hidden = !progress.skills.length;
+  mastery.replaceChildren(...progress.skills.slice(0, 4).map(skill => {
+    const item = document.createElement("p");
+    item.textContent = `${skill.topic_id} · ${skill.mode}: ${skill.mastery}% (${skill.attempts} attempts)`;
+    return item;
+  }));
+  const mistakes = document.querySelector("#mistake-review");
+  mistakes.hidden = !progress.recent_mistakes.length;
+  mistakes.replaceChildren(...progress.recent_mistakes.slice(0, 4).map(mistake => {
+    const item = document.createElement("p");
+    item.textContent = `${mistake.topic_id} · ${mistake.mode}: ${mistake.error_tags.join(", ")}`;
+    return item;
+  }));
+}
+
+function renderExercise(exercise) {
+  state.exercise = exercise;
+  state.hintsUsed = 0;
+  document.querySelector("#study-reason").textContent = exercise.reason;
+  document.querySelector("#exercise-mode").textContent = `${exercise.mode} · ${exercise.topic_id}`;
+  document.querySelector("#exercise-prompt").textContent = exercise.prompt;
+  const labButton = document.querySelector("#supporting-lab");
+  labButton.hidden = !exercise.lab_id;
+  labButton.dataset.labId = exercise.lab_id || "";
+  document.querySelector("#exercise-answer").value = "";
+  document.querySelector("#exercise-submit").disabled = false;
+  document.querySelector("#exercise-result").textContent = "";
+  const hints = document.querySelector("#exercise-hints");
+  hints.open = false;
+  document.querySelector("#exercise-hint-list").replaceChildren(...exercise.hints.map(hint => {
+    const item = document.createElement("li");
+    item.textContent = hint;
+    return item;
+  }));
+}
+
+async function selectCampusDevice(device) {
   if (state.busy) return;
   state.busy = true;
   labSelect.disabled = true;
   input.disabled = true;
   try {
-    const result = await api(`/api/sessions/${state.sessionId}/campus`, {method: "POST", body: JSON.stringify({device: button.dataset.device})});
+    const result = await api(`/api/sessions/${state.sessionId}/campus`, {method: "POST", body: JSON.stringify({device})});
     state.prompt = result.prompt;
     promptLabel.textContent = result.prompt;
     state.history = result.history;
@@ -385,7 +565,7 @@ document.querySelectorAll("[data-device]").forEach(button => button.addEventList
     input.focus({ preventScroll: true });
   } catch (error) { appendLine(error.message, "error-line"); input.disabled = false; }
   finally { state.busy = false; labSelect.disabled = false; }
-}));
+}
 
 document.querySelector("#ping-form").addEventListener("submit", async event => {
   event.preventDefault();
@@ -395,6 +575,9 @@ document.querySelector("#ping-form").addEventListener("submit", async event => {
   try {
     const result = await api(`/api/sessions/${state.sessionId}/campus`, {method: "POST", body: JSON.stringify({source: document.querySelector("#ping-source").value, destination: document.querySelector("#ping-destination").value})});
     document.querySelector("#ping-result").textContent = result.output;
+    const timeline = document.querySelector("#ping-route-timeline");
+    timeline.hidden = !result.timeline;
+    if (result.timeline) timeline.replaceChildren(...result.timeline.flatMap(item => [Object.assign(document.createElement("p"), {textContent: item.direction}), ...item.routes.map(route => Object.assign(document.createElement("p"), {textContent: `↳ ${route.source} ${route.prefix} via ${route.via} · ${route.reason}`})), ...(item.failure ? [Object.assign(document.createElement("p"), {textContent: `↳ first blocker: ${item.failure}`})] : [])]));
     renderCampus(result.campus, result.active);
   } catch (error) { document.querySelector("#ping-result").textContent = error.message; }
   finally { state.busy = false; labSelect.disabled = false; }

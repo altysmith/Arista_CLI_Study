@@ -1,0 +1,67 @@
+[
+  {
+    "id": "subnet-local-or-remote", "title": "Subnet: local or remote?", "topic_id": "ipv4-local-delivery", "mode": "analyze", "priority": "high",
+    "hints": ["Compare both addresses using the local prefix.", "Matching network portions mean local delivery."], "error_tags": ["concept", "dependency-missed"],
+    "variants": [{"id": "same-24", "prompt": "A host is 10.10.20.15/24 and sends to 10.10.20.200. Is the destination local or remote? Answer local or remote.", "answer": "local", "explanation": "Both addresses are in 10.10.20.0/24, so the host delivers directly after resolving the destination MAC."}, {"id": "different-24", "prompt": "A host is 192.168.40.10/24 and sends to 192.168.41.10. Is the destination local or remote? Answer local or remote.", "answer": "remote", "explanation": "The addresses are in different /24 networks, so the host sends through its default gateway."}]
+  },
+  {
+    "id": "arp-next-hop", "title": "ARP: choose the next hop", "topic_id": "ipv4-local-delivery", "mode": "analyze", "priority": "high",
+    "hints": ["First decide whether the destination is on the local subnet.", "For remote traffic, ARP resolves the local gateway."], "error_tags": ["concept", "dependency-missed"],
+    "variants": [{"id": "remote-server", "prompt": "Host 10.10.10.2/24 uses gateway 10.10.10.1 and sends to 10.200.10.8. Which IP does it ARP for?", "answer": "10.10.10.1", "explanation": "The server is remote, so the host resolves the MAC address of its local next hop, the default gateway."}, {"id": "local-server", "prompt": "Host 172.16.5.10/24 sends to 172.16.5.50. Which IP does it ARP for?", "answer": "172.16.5.50", "explanation": "The destination is local to the /24, so ARP resolves the destination host's MAC address directly."}]
+  },
+  {
+    "id": "vlan-trunk-mismatch", "title": "Trunk VLAN preservation", "topic_id": "vlan-trunks", "mode": "troubleshoot", "priority": "very_high", "lab_id": "trunk-add-vlan",
+    "hints": ["Compare allowed VLANs at both ends.", "Adding differs from replacing an allowed list."], "error_tags": ["wrong-command", "dependency-missed"],
+    "variants": [{"id": "missing-vlan-20", "prompt": "A trunk currently allows VLANs 10 and 99, but students in VLAN 20 cannot cross it. What EOS command adds VLAN 20 without removing existing VLANs?", "answer": "switchport trunk allowed vlan add 20", "explanation": "The add form preserves VLANs 10 and 99 while allowing VLAN 20."}, {"id": "missing-vlan-30", "prompt": "A trunk allows VLANs 10 and 20, but services VLAN 30 must cross it. What EOS command adds VLAN 30 while preserving current VLANs?", "answer": "switchport trunk allowed vlan add 30", "explanation": "The add form extends the allowed list without replacing VLANs 10 and 20."}]
+  },
+  {
+    "id": "route-selection", "title": "Route selection", "topic_id": "route-selection", "mode": "analyze", "priority": "very_high",
+    "hints": ["Prefer the longest matching prefix.", "Only compare administrative distance after prefix length."], "error_tags": ["route-selection"],
+    "variants": [{"id": "longest-prefix", "prompt": "Routes exist for 10.0.0.0/8 and 10.20.0.0/16. Which route matches destination 10.20.8.5? Answer the prefix.", "answer": "10.20.0.0/16", "explanation": "Both routes match, but /16 is the longest prefix and therefore wins."}, {"id": "host-route", "prompt": "Routes exist for 192.0.2.0/24 and 192.0.2.18/32. Which route matches destination 192.0.2.18? Answer the prefix.", "answer": "192.0.2.18/32", "explanation": "A /32 host route is more specific than the matching /24 route."}]
+  },
+  {
+    "id": "ospf-neighbor-missing", "title": "OSPF neighbor evidence", "topic_id": "ospf-workflow", "mode": "verify", "priority": "very_high",
+    "hints": ["Verify adjacency before assuming routes should appear.", "Use the command that lists OSPF neighbors."], "error_tags": ["verification-skipped", "wrong-command"],
+    "variants": [{"id": "verify-neighbor", "prompt": "After configuring OSPF, which command directly verifies whether a neighbor adjacency exists?", "answer": "show ip ospf neighbor", "explanation": "The neighbor command shows adjacency state; a configuration alone does not prove an adjacency formed."}]
+  },
+  {
+    "id": "acl-first-match", "title": "ACL first-match behavior", "topic_id": "acl-workflow", "mode": "analyze", "priority": "very_high",
+    "hints": ["ACL entries are examined from top to bottom.", "The first matching entry decides the result."], "error_tags": ["concept", "wrong-direction"],
+    "variants": [{"id": "specific-before-general", "prompt": "An ACL permits IP any any before denying TCP host 10.1.1.10 any eq 22. Is SSH from 10.1.1.10 permitted or denied?", "answer": "permitted", "explanation": "The earlier permit ip any any matches first, so the later SSH deny is never reached."}, {"id": "deny-before-permit", "prompt": "An ACL denies TCP host 10.1.1.10 any eq 22 before permitting IP any any. Is SSH from 10.1.1.10 permitted or denied?", "answer": "denied", "explanation": "The earlier SSH deny is the first matching ACL entry."}]
+  },
+  {
+    "id": "eos-cli-modes", "title": "EOS CLI mode workflow", "topic_id": "eos-cli-workflow", "mode": "recall", "priority": "high",
+    "hints": ["Start from privileged EXEC mode.", "Global configuration is one command from privileged EXEC."], "error_tags": ["wrong-mode", "syntax"],
+    "variants": [{"id": "enter-config", "prompt": "From switch#, which command enters global configuration mode?", "answer": "configure terminal", "explanation": "configure terminal enters global configuration mode from privileged EXEC; the prompt becomes switch(config)#."}]
+  },
+  {
+    "id": "eos-config-state", "title": "Running versus startup configuration", "topic_id": "eos-cli-workflow", "mode": "verify", "priority": "high",
+    "hints": ["A working change is not necessarily saved.", "Compare active and saved configuration deliberately."], "error_tags": ["verification-skipped", "concept"],
+    "variants": [{"id": "save-for-reboot", "prompt": "A configuration works now but must survive a reboot. Which EOS command saves it?", "answer": "copy running-config startup-config", "explanation": "The running configuration is active now; copying it to startup-config preserves it across a reboot."}, {"id": "inspect-saved", "prompt": "Which command displays the saved configuration used after a reboot?", "answer": "show startup-config", "explanation": "startup-config is the saved configuration used after reboot."}]
+  },
+  {
+    "id": "interface-evidence", "title": "Interface evidence first", "topic_id": "eos-interface-workflow", "mode": "troubleshoot", "priority": "high", "lab_id": "access-vlan-basics",
+    "hints": ["Start with the lowest unproven dependency.", "Use the concise interface state view before changing configuration."], "error_tags": ["wrong-command", "dependency-missed"],
+    "variants": [{"id": "check-link-state", "prompt": "A VLAN user is offline and link state has not been proven. Which command gives a concise status view of all interfaces?", "answer": "show interfaces status", "explanation": "show interfaces status is an efficient first check for administrative and link-state evidence before assuming a VLAN fault."}]
+  },
+  {
+    "id": "lacp-compatibility", "title": "LACP compatibility", "topic_id": "stp-lacp-mlag", "mode": "analyze", "priority": "very_high",
+    "hints": ["LACP needs at least one side to initiate negotiation.", "Do not mix static and negotiated aggregation."], "error_tags": ["concept", "dependency-missed"],
+    "variants": [{"id": "passive-passive", "prompt": "Two switches use LACP passive on both ends of a port-channel. Will the LACP bundle form? Answer yes or no.", "answer": "no", "explanation": "Passive/passive provides no initiator, so LACP negotiation does not form the bundle. Active/passive or active/active can form it."}, {"id": "active-passive", "prompt": "One side of an LACP port-channel is active and the other is passive. Will the bundle form? Answer yes or no.", "answer": "yes", "explanation": "Active initiates LACP negotiation, so active/passive can form a bundle."}]
+  },
+  {
+    "id": "mlag-peer-versus-downstream", "title": "MLAG role distinction", "topic_id": "stp-lacp-mlag", "mode": "analyze", "priority": "very_high", "lab_id": "mlag-campus-repair",
+    "hints": ["One port-channel connects the two peers.", "Another can connect a dual-attached downstream device."], "error_tags": ["concept", "wrong-interface"],
+    "variants": [{"id": "peer-link-role", "prompt": "In an MLAG design, what connects the two MLAG peer switches: the peer link or the downstream MLAG port-channel?", "answer": "peer link", "explanation": "The peer link connects the two peers. A downstream MLAG port-channel connects a dual-attached device to the peer pair."}]
+  },
+  {
+    "id": "static-default-route", "title": "Static default route", "topic_id": "route-selection", "mode": "configure", "priority": "very_high",
+    "hints": ["A default route matches destinations without a more specific route.", "Use the IPv4 prefix 0.0.0.0/0."], "error_tags": ["syntax", "route-selection"],
+    "variants": [{"id": "gateway-192-0-2-1", "prompt": "Configure an IPv4 default route through next hop 192.0.2.1. Enter the EOS command.", "answer": "ip route 0.0.0.0/0 192.0.2.1", "explanation": "A static default route uses 0.0.0.0/0 and the reachable next-hop address."}, {"id": "gateway-198-51-100-1", "prompt": "Configure an IPv4 default route through next hop 198.51.100.1. Enter the EOS command.", "answer": "ip route 0.0.0.0/0 198.51.100.1", "explanation": "The default prefix remains 0.0.0.0/0; only the next hop changes."}]
+  },
+  {
+    "id": "ospf-first-failed-dependency", "title": "OSPF troubleshooting order", "topic_id": "ospf-workflow", "mode": "troubleshoot", "priority": "very_high",
+    "hints": ["Do not assume routes are the first thing to check.", "Adjacency is a prerequisite to learning routes dynamically."], "error_tags": ["dependency-missed", "verification-skipped"],
+    "variants": [{"id": "neighbor-before-route", "prompt": "OSPF routes are missing after configuration. Which should be verified first: neighbor adjacency or the OSPF route table?", "answer": "neighbor adjacency", "explanation": "An OSPF adjacency is a prerequisite for learning routes. Prove the neighbor state before interpreting absent OSPF routes."}, {"id": "full-route-missing", "prompt": "An OSPF neighbor is Full but an expected prefix is absent. Should you keep troubleshooting Hello packets, or investigate advertisement and route selection?", "answer": "advertisement and route selection", "explanation": "A Full adjacency proves the neighbor relationship; the next dependency is whether the prefix is advertised and selected."}]
+  }
+]

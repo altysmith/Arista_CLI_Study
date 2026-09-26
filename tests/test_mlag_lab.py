@@ -102,3 +102,8 @@ class MlagLabTests(unittest.TestCase):
                 self.assertTrue(all(topic["checkpoints"] for topic in topics))
                 for topic in topics:
                     self.assertTrue(set(topic["labs"]).issubset(known_labs))
+
+    def test_mlag_grade_reports_inspection_evidence(self):
+        for command in ("enable", "show running-config", "show mlag", "show port-channel dense"):
+            self.app.execute(self.sid, {"command": command})
+        self.assertEqual(self.app.grade(self.sid)["process_passed_count"], 3)

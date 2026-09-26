@@ -322,7 +322,7 @@
       {
         "title": "4. LACP and MLAG",
         "description": "Understand member compatibility, LACP active/passive behavior, logical port channels, MLAG peer components, and the difference between a configured state and a proven healthy topology.",
-        "labs": ["mlag-campus-repair"],
+        "labs": ["mlag-campus-repair", "mlag-peer-link-repair"],
         "checkpoints": [
           {"question": "Which LACP mode pairing cannot form a negotiated bundle?", "answer": "Passive/passive cannot initiate LACP negotiation. At least one side must be active for an LACP bundle to form."},
           {"question": "What does a configured MLAG summary not prove in this simulator?", "answer": "It does not prove peer reachability, LACP negotiation, forwarding, or failover. Those require a real two-peer topology and operational testing."}
@@ -348,7 +348,7 @@
       {
         "title": "2. Static routing and return paths",
         "description": "Configure and verify next-hop, exit-interface, and default routes; then diagnose missing routes, wrong next hops, and missing return routing.",
-        "labs": [],
+        "labs": ["static-default-route", "routed-static-return-ticket", "routed-static-next-hop-ticket"],
         "checkpoints": [
           {"question": "Why is a route on the forward device not sufficient for end-to-end reachability?", "answer": "The return path must also exist. A successful forward lookup cannot help if the reply has no route back to the original source."},
           {"question": "What should a static-route troubleshooting workflow verify?", "answer": "Verify the destination prefix and mask, selected next hop or exit interface, reachability of that next hop, the installed route, a test to the destination, and the return route."}
@@ -357,7 +357,7 @@
       {
         "title": "3. Dynamic routing: RIP and OSPF",
         "description": "Know RIP's distance-vector behavior and loop prevention, then focus on OSPF areas, neighbor and adjacency states, network types, DR/BDR, costs, and the verification sequence.",
-        "labs": [],
+        "labs": ["ospf-local-basics", "branch-routing-readiness", "ospf-no-neighbor-diagnosis", "ospf-area-mismatch-ticket", "ospf-missing-advertisement-ticket", "ospf-link-down-ticket", "ospf-prefix-selection-ticket", "ospf-route-source-ticket"],
         "checkpoints": [
           {"question": "Why can an OSPF neighbor show Two-Way and still be healthy?", "answer": "On a broadcast network, DROTHER routers commonly remain Two-Way with one another while each forms a Full adjacency with the DR and BDR. Interpret the state in the context of the network type and role."},
           {"question": "What is the practical order for OSPF troubleshooting?", "answer": "Verify physical and Layer 3 interface state, OSPF participation, neighbor state, matching interface parameters, learned routes, reachability to the neighbor and remote destination, then the return path."}
@@ -392,7 +392,7 @@
       {
         "title": "2. QoS classification to egress",
         "description": "Trace traffic through classification, marking, a trust boundary, CoS/DSCP mapping, traffic classes, queues, policy maps, policing, shaping, and verification counters.",
-        "labs": [],
+        "labs": ["qos-voice-marking", "qos-policy-not-applied"],
         "checkpoints": [
           {"question": "What is the difference between classification and marking?", "answer": "Classification identifies traffic based on characteristics such as addresses, protocol, ports, or existing markings. Marking writes or rewrites a traffic marking such as DSCP or CoS."},
           {"question": "How do policing and shaping differ?", "answer": "Policing enforces a rate by dropping or remarking traffic that exceeds it. Shaping buffers and schedules traffic to smooth its transmission rate, trading delay for a controlled output rate."}
@@ -401,7 +401,7 @@
       {
         "title": "3. ACLs and management security",
         "description": "Learn ACL matching order and implicit deny, direction and placement, interface versus service ACLs, verification, AAA, TACACS+/RADIUS, fallback, and secure management access.",
-        "labs": [],
+        "labs": ["acl-management-edge", "acl-wrong-direction"],
         "checkpoints": [
           {"question": "What happens when traffic reaches the end of an ACL without a matching permit?", "answer": "The implicit deny applies. A missing explicit permit can therefore block all traffic that did not match an earlier permitted entry."},
           {"question": "How do authentication, authorization, and accounting differ?", "answer": "Authentication verifies identity, authorization determines permitted actions, and accounting records activity. Treat them as separate controls when troubleshooting access."}
@@ -410,7 +410,7 @@
       {
         "title": "4. Access-layer source validation",
         "description": "Connect DHCP snooping trusted ports and bindings to IP Source Guard, ARP inspection, static bindings, IP locking, and a disciplined workflow for legitimate traffic that is unexpectedly dropped.",
-        "labs": [],
+        "labs": ["dhcp-snooping-trust", "dhcp-snooping-trust-repair"],
         "checkpoints": [
           {"question": "Why must DHCP-server-facing paths be trusted in a DHCP snooping design?", "answer": "Valid server messages must traverse trusted ports. If a legitimate server-facing path is untrusted, snooping can block offers or acknowledgements and clients will fail to obtain addresses."},
           {"question": "What relationship links DHCP snooping, IP Source Guard, and ARP inspection?", "answer": "DHCP snooping can create a trusted binding table. IP Source Guard and ARP inspection can use that binding information to validate source IP/MAC and ARP claims at the access layer."}

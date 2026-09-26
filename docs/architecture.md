@@ -2,7 +2,7 @@
 
 ## Campus web release
 
-`campus.py` adds a bounded, fixed-tree Layer 2 model around existing CLI sessions. Each switch owns independent structured configuration; host traffic evaluates both directions over access/trunk VLAN rules. Grading checks connectivity and separation without generating traffic. The browser switches consoles without dropping other devices' state.
+`campus.py` adds bounded topology models around existing CLI sessions. The fixed-tree Layer 2 model evaluates access/trunk VLAN forwarding and separation. The three-router routed model evaluates directly connected and static IPv4 forwarding, next-hop reachability, and reverse paths. Neither model generates traffic or claims protocol behavior it does not simulate. The browser switches consoles without dropping other devices' state.
 
 `persistence.py` saves versioned, allowlisted JSON snapshots to SQLite, including running/startup configuration and CLI mode for every device. SQLite connections close explicitly. One request lock serializes mutation and snapshot writes. Resume selects the most recent session for an exercise. The hosted service is intentionally single-owner behind Cloudflare Access; it does not offer per-user tenancy. MAC/ARP learning and terminal output are transient.
 

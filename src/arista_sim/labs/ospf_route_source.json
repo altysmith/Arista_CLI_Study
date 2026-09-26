@@ -1,0 +1,12 @@
+{
+  "id": "ospf-route-source-ticket",
+  "title": "Routed campus ticket: static route beats OSPF",
+  "summary": "Remove a conflicting static route so the equally specific OSPF route can forward traffic.",
+  "difficulty": "Campus · OSPF route selection",
+  "estimated_minutes": 18,
+  "brief": "EDGE-A has both a static and OSPF route for the exact SITE-B prefix, 10.20.20.0/24. The static route has an invalid next hop, so traffic fails despite the healthy OSPF route. Inspect the route table, apply source-preference reasoning after the prefix-length tie, and remove only the conflicting static route.",
+  "objectives": ["Identify the equal-prefix static and OSPF routes", "Explain why static is selected on a prefix-length tie", "Remove the bad static route and verify host reachability"],
+  "hints": ["Longest prefix does not choose between identical prefixes.", "For the same prefix, route source preference determines the selected route.", "Do not remove the OSPF network statement."],
+  "campus_fault": "ospf-source",
+  "checks": []
+}

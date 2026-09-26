@@ -4,7 +4,7 @@ A local, dependency-free training simulator that teaches EOS CLI discovery and c
 
 ## Browser lab
 
-The campus release adds two fictional three-switch/four-host break/fix tickets: a staff access-port fault and a student trunk fault. Switch consoles expose topology-derived LLDP and MAC learning; the host ping panel tests same-subnet connectivity and shows host ARP. Grading checks both host pairs, Layer 2 isolation, and preservation of management VLAN 99. This fixed, loop-free model does not simulate routing, STP convergence, LACP, MLAG, ACL enforcement, or traffic timing.
+The campus release includes fictional Layer 2 access/trunk break-fix tickets and a separate three-router static-routing return-path ticket. Switch consoles expose topology-derived LLDP and MAC learning for the Layer 2 tickets. The routed ticket evaluates directly connected and static IPv4 forwarding, next-hop reachability, and the return path. It does not simulate OSPF adjacency or route exchange, STP convergence, LACP, MLAG, ACL enforcement, packet loss, or traffic timing.
 
 For durable saves across refreshes and server restarts, run `python -m arista_sim.web --data-path user_data/progress.sqlite3`. The Windows/macOS browser launchers enable this automatically. Switching exercises resumes each exercise's saved configuration; Reset clears only that exercise. Configurations save independently from EOS startup configuration. Terminal output and learned tables are transient. The hosted app is for one authorized owner, with progress shared across their devices.
 

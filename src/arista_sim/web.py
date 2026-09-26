@@ -12,13 +12,16 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib.resources import files
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from .cli.session import Session
 from .labs import get_lab, grade_lab, load_labs, load_sections, public_lab
 from .reference import load_command_reference
 from .persistence import ProgressDatabase, dump_cli, restore_cli
-from .campus import Campus
+from .campus import Campus, RoutedCampus
+from .curriculum import load_curriculum
+from .exercises import choose_study_now, evaluate_attempt, exercise_choices
+from .exam import build_exam, public_exam, score_exam
 
 
 MAX_REQUEST_BYTES = 64 * 1024
@@ -28,7 +31,7 @@ MAX_REQUEST_BYTES = 64 * 1024
 class BrowserSession:
     cli: Session
     lab_id: str
-    campus: Campus | None = None
+    campus: Campus | RoutedCampus | None = None
     active: str = ""
 
 
@@ -43,7 +46,8 @@ class SessionStore:
         if self.database:
             self.database.save(session_id, current.lab_id, {
                 "cli": dump_cli(current.cli), "active": current.active,
-                "devices": {n: dump_cli(c) for n, c in current.campus.sessions.items()} if current.campus else None})
+                "devices": {n: dump_cli(c) for n, c in current.campus.sessions.items()} if current.campus else None,
+                "evidence": sorted(current.campus.evidence) if current.campus else None})
 
     def latest(self, lab_id):
         if self.database:
@@ -52,8 +56,10 @@ class SessionStore:
 
     def _new(self, lab):
         if lab.get("campus_fault"):
-            campus = Campus(lab["campus_fault"])
-            return BrowserSession(campus.sessions["DIST-1"], lab["id"], campus, "DIST-1")
+            fault = lab["campus_fault"]
+            campus = RoutedCampus("static" if fault == "routing" else fault) if fault in ("routing", "next-hop", "ospf-area", "ospf-route", "ospf-link", "ospf-specificity", "ospf-source") else Campus(fault)
+            active = next(iter(campus.sessions))
+            return BrowserSession(campus.sessions[active], lab["id"], campus, active)
         return BrowserSession(self._starting_session(lab), lab["id"])
 
     def create(self, lab_id: str) -> tuple[str, BrowserSession]:
@@ -77,6 +83,7 @@ class SessionStore:
                 if current.campus:
                     for name, state in data["devices"].items():
                         restore_cli(state, current.campus.sessions[name])
+                    current.campus.evidence = set(data.get("evidence") or [])
                     current.active = data["active"]
                     current.cli = current.campus.sessions[current.active]
                 else:
@@ -117,6 +124,66 @@ class LabApplication:
 
     def command_reference(self) -> dict[str, Any]:
         return load_command_reference()
+
+    def curriculum(self) -> dict[str, Any]:
+        return load_curriculum()
+
+    def study_now(self, topic_id=None, mode=None) -> dict[str, Any]:
+        progress = self.sessions.database.skill_progress() if self.sessions.database else []
+        attempts = self.sessions.database.exercise_attempt_counts() if self.sessions.database else {}
+        return choose_study_now(progress, topic_id=topic_id, mode=mode, family_attempts=attempts)
+
+    def progress(self) -> dict[str, Any]:
+        if not self.sessions.database:
+            return {"skills": [], "recent_mistakes": []}
+        return {"skills": self.sessions.database.skill_progress(), "recent_mistakes": self.sessions.database.recent_mistakes()}
+
+    def exercises(self) -> dict[str, Any]:
+        return {"exercises": exercise_choices()}
+
+    def exam(self) -> dict[str, Any]:
+        if not self.sessions.database:
+            return {"active": None}
+        active = self.sessions.database.active_exam()
+        if active:
+            return {"active": public_exam(active["questions"], active["started_at"], active["id"])}
+        return {"active": None}
+
+    def start_exam(self) -> dict[str, Any]:
+        if not self.sessions.database:
+            raise ValueError("Exam progress requires durable storage")
+        active = self.sessions.database.active_exam()
+        if active:
+            return public_exam(active["questions"], active["started_at"], active["id"])
+        exam_id = uuid.uuid4().hex
+        questions = build_exam(exam_id)
+        started_at = self.sessions.database.create_exam(exam_id, questions)
+        return public_exam(questions, started_at, exam_id)
+
+    def submit_exam(self, exam_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        if not self.sessions.database:
+            raise ValueError("Exam progress requires durable storage")
+        answers = payload.get("answers")
+        if not isinstance(answers, list):
+            raise ValueError("Exam answers must be a list")
+        exam = self.sessions.database.exam(exam_id)
+        if exam["submitted_at"]:
+            return exam["results"]
+        result = score_exam(exam["questions"], answers)
+        self.sessions.database.submit_exam(exam_id, result)
+        return result
+
+    def submit_attempt(self, exercise_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        if not self.sessions.database:
+            raise ValueError("Exercise progress requires durable storage")
+        variant_id = payload.get("variant_id")
+        answer = payload.get("answer")
+        hints_used = payload.get("hints_used", 0)
+        if not isinstance(variant_id, str) or not isinstance(answer, str) or not isinstance(hints_used, int) or hints_used < 0:
+            raise ValueError("Invalid exercise attempt")
+        result = evaluate_attempt(exercise_id, variant_id, answer)
+        progress = self.sessions.database.record_attempt(exercise_id, result["topic_id"], result["mode"], result["correct"], hints_used, result["error_tags"])
+        return {"correct": result["correct"], "explanation": result["explanation"], "error_tags": result["error_tags"], "progress": progress}
 
     def create_session(self, payload: dict[str, Any]) -> dict[str, Any]:
         labs = load_labs()
@@ -169,7 +236,7 @@ class LabApplication:
         browser_session = self.sessions.get(session_id)
         if browser_session.campus:
             return browser_session.campus.grade()
-        return grade_lab(browser_session.cli.device, get_lab(browser_session.lab_id))
+        return grade_lab(browser_session.cli.device, get_lab(browser_session.lab_id), browser_session.cli.history)
 
     def campus_action(self, session_id, payload):
         current = self.sessions.get(session_id)
@@ -206,12 +273,29 @@ class LabRequestHandler(BaseHTTPRequestHandler):
         return self.server.app  # type: ignore[attr-defined]
 
     def do_GET(self) -> None:
-        path = urlparse(self.path).path
+        request_url = urlparse(self.path)
+        path = request_url.path
         if path == "/api/labs":
             self._send_json(self.app.labs())
             return
         if path == "/api/reference":
             self._send_json(self.app.command_reference())
+            return
+        if path == "/api/curriculum":
+            self._send_json(self.app.curriculum())
+            return
+        if path == "/api/study-now":
+            query = parse_qs(request_url.query)
+            self._send_json(self.app.study_now(query.get("topic_id", [None])[0], query.get("mode", [None])[0]))
+            return
+        if path == "/api/progress":
+            self._send_json(self.app.progress())
+            return
+        if path == "/api/exercises":
+            self._send_json(self.app.exercises())
+            return
+        if path == "/api/exam":
+            self._send_json(self.app.exam())
             return
         self._send_asset("index.html" if path == "/" else path.removeprefix("/"))
 
@@ -231,6 +315,22 @@ class LabRequestHandler(BaseHTTPRequestHandler):
             if path == "/api/sessions":
                 self._send_json(self.app.create_session(payload), HTTPStatus.CREATED)
                 return
+
+            if path == "/api/exam":
+                self._send_json(self.app.start_exam(), HTTPStatus.CREATED)
+                return
+
+            if path.startswith("/api/exams/") and path.endswith("/submit"):
+                parts = path.strip("/").split("/")
+                if len(parts) == 4:
+                    self._send_json(self.app.submit_exam(parts[2], payload))
+                    return
+
+            if path.startswith("/api/exercises/") and path.endswith("/attempts"):
+                parts = path.strip("/").split("/")
+                if len(parts) == 4:
+                    self._send_json(self.app.submit_attempt(parts[2], payload))
+                    return
 
             parts = path.strip("/").split("/")
             if len(parts) == 4 and parts[:2] == ["api", "sessions"]:

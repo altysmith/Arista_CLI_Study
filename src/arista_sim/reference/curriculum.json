@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "sections": [
+    {
+      "id": "advanced-networking-concepts",
+      "title": "Advanced Networking Concepts",
+      "source_refs": [{"document": "1 - Advanced Networking Concepts All Notes.pdf", "pages": [1, 2]}],
+      "domains": [
+        {"id": "advanced-ipv6", "title": "IPv6", "topics": [
+          {"id": "ipv6-fundamentals", "title": "IPv6 addressing and neighbor discovery", "priority": "high", "modes": ["learn", "recall", "analyze", "configure", "verify", "troubleshoot"], "prerequisites": ["ipv4-local-delivery"], "source_refs": [{"document": "1 - Advanced Networking Concepts All Notes.pdf", "pages": [3, 4]}]}
+        ]},
+        {"id": "advanced-security", "title": "Security and QoS", "topics": [
+          {"id": "acl-workflow", "title": "ACL configuration and verification", "priority": "very_high", "modes": ["learn", "recall", "analyze", "configure", "verify", "troubleshoot"], "prerequisites": ["ipv4-local-delivery"], "source_refs": [{"document": "1 - Advanced Networking Concepts All Notes.pdf", "pages": [25, 26]}]},
+          {"id": "access-layer-security", "title": "DHCP snooping and source validation", "priority": "medium", "modes": ["learn", "analyze", "configure", "verify", "troubleshoot"], "prerequisites": ["vlan-trunks", "dhcp-dns-transport"], "source_refs": [{"document": "1 - Advanced Networking Concepts All Notes.pdf", "pages": [41, 42]}]},
+          {"id": "qos-workflow", "title": "QoS classification and verification", "priority": "medium", "modes": ["learn", "analyze", "configure", "verify", "troubleshoot"], "prerequisites": ["ipv4-local-delivery"], "source_refs": [{"document": "1 - Advanced Networking Concepts All Notes.pdf", "pages": [11, 12]}]}
+        ]}
+      ]
+    },
+    {
+      "id": "eos-fundamentals",
+      "title": "Arista EOS Fundamentals",
+      "source_refs": [{"document": "2 - Arista EOS Fundamentals.pdf", "pages": [1, 2]}],
+      "domains": [
+        {"id": "eos-operation", "title": "EOS operation", "topics": [
+          {"id": "eos-cli-workflow", "title": "CLI navigation, help, and configuration state", "priority": "high", "modes": ["learn", "recall", "analyze", "configure", "verify", "troubleshoot"], "prerequisites": [], "source_refs": [{"document": "2 - Arista EOS Fundamentals.pdf", "pages": [1, 12]}]},
+          {"id": "eos-interface-workflow", "title": "Interfaces and safe changes", "priority": "high", "modes": ["learn", "analyze", "configure", "verify", "troubleshoot"], "prerequisites": ["eos-cli-workflow"], "source_refs": [{"document": "2 - Arista EOS Fundamentals.pdf", "pages": [33, 34]}]}
+        ]}
+      ]
+    },
+    {
+      "id": "layer2-switching",
+      "title": "Layer 2 Switching Fundamentals",
+      "source_refs": [{"document": "3 - Layer 2 Switching Fundamentals.pdf", "pages": [1, 2]}],
+      "domains": [
+        {"id": "layer2-forwarding", "title": "Forwarding and VLANs", "topics": [
+          {"id": "vlan-trunks", "title": "VLANs, trunks, and SVIs", "priority": "very_high", "modes": ["learn", "recall", "analyze", "configure", "verify", "troubleshoot"], "prerequisites": ["eos-interface-workflow", "ethernet-forwarding"], "source_refs": [{"document": "3 - Layer 2 Switching Fundamentals.pdf", "pages": [15, 16]}]},
+          {"id": "stp-lacp-mlag", "title": "STP, LACP, and MLAG", "priority": "very_high", "modes": ["learn", "analyze", "configure", "verify", "troubleshoot"], "prerequisites": ["vlan-trunks"], "source_refs": [{"document": "3 - Layer 2 Switching Fundamentals.pdf", "pages": [48, 49]}]}
+        ]}
+      ]
+    },
+    {
+      "id": "layer3-routing",
+      "title": "Layer 3 Routing Fundamentals",
+      "source_refs": [{"document": "4 - Layer 3 Routing Fundamentals.pdf", "pages": [1, 2]}],
+      "domains": [
+        {"id": "routing", "title": "Routing and OSPF", "topics": [
+          {"id": "route-selection", "title": "Route selection and static routing", "priority": "very_high", "modes": ["learn", "recall", "analyze", "configure", "verify", "troubleshoot"], "prerequisites": ["ipv4-local-delivery", "eos-interface-workflow"], "source_refs": [{"document": "4 - Layer 3 Routing Fundamentals.pdf", "pages": [9, 10]}]},
+          {"id": "ospf-workflow", "title": "OSPF configuration, verification, and troubleshooting", "priority": "very_high", "modes": ["learn", "analyze", "configure", "verify", "troubleshoot"], "prerequisites": ["route-selection"], "source_refs": [{"document": "4 - Layer 3 Routing Fundamentals.pdf", "pages": [43, 44]}]}
+        ]}
+      ]
+    },
+    {
+      "id": "network-engineering-fundamentals",
+      "title": "Network Engineering Fundamentals",
+      "source_refs": [{"document": "5 - Network Engineering Fundamentals.pdf", "pages": [1, 2]}],
+      "domains": [
+        {"id": "network-mental-model", "title": "Packet journey and services", "topics": [
+          {"id": "ethernet-forwarding", "title": "Ethernet, MAC learning, and packet journey", "priority": "high", "modes": ["learn", "recall", "analyze", "troubleshoot"], "prerequisites": [], "source_refs": [{"document": "5 - Network Engineering Fundamentals.pdf", "pages": [17, 18]}]},
+          {"id": "ipv4-local-delivery", "title": "IPv4 subnetting, ARP, and local delivery", "priority": "high", "modes": ["learn", "recall", "analyze", "troubleshoot"], "prerequisites": ["ethernet-forwarding"], "source_refs": [{"document": "5 - Network Engineering Fundamentals.pdf", "pages": [30, 31]}]},
+          {"id": "dhcp-dns-transport", "title": "DHCP, DNS, ICMP, and transport troubleshooting", "priority": "high", "modes": ["learn", "recall", "analyze", "troubleshoot"], "prerequisites": ["ipv4-local-delivery"], "source_refs": [{"document": "5 - Network Engineering Fundamentals.pdf", "pages": [47, 48]}]}
+        ]}
+      ]
+    }
+  ]
+}

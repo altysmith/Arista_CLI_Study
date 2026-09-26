@@ -35,6 +35,12 @@ def running_config(device: DeviceState) -> str:
         lines.extend(["ip routing", "!"])
     if device.ipv6_unicast_routing:
         lines.extend(["ipv6 unicast-routing", "!"])
+    if device.dhcp_snooping_enabled:
+        lines.append("ip dhcp snooping")
+    if device.dhcp_snooping_vlans:
+        lines.append(f"ip dhcp snooping vlan {_vlan_list(device.dhcp_snooping_vlans)}")
+    if device.dhcp_snooping_enabled or device.dhcp_snooping_vlans:
+        lines.append("!")
     if device.spanning_tree_mode != "mstp":
         lines.extend([f"spanning-tree mode {device.spanning_tree_mode}", "!"])
     for vlan, priority in sorted(device.spanning_tree_priorities.items()):
@@ -82,6 +88,8 @@ def running_config(device: DeviceState) -> str:
             lines.append(f"   ip access-group {acl} {direction}")
         for direction, policy in interface.service_policies.items():
             lines.append(f"   service-policy type qos {direction} {policy}")
+        if interface.dhcp_snooping_trust:
+            lines.append("   ip dhcp snooping trust")
         if not interface.autostate:
             lines.append("   no autostate")
         if not interface.admin_up:
@@ -159,6 +167,7 @@ def _interface_is_default(interface: Interface) -> bool:
         and interface.stp_port_priority == 128
         and not interface.ip_access_groups
         and not interface.service_policies
+        and not interface.dhcp_snooping_trust
     )
 
 

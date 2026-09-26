@@ -1,0 +1,12 @@
+{
+  "id": "ospf-missing-advertisement-ticket",
+  "title": "Routed campus ticket: OSPF route not advertised",
+  "summary": "Restore a missing remote route after proving the adjacency is Full.",
+  "difficulty": "Campus · OSPF route selection",
+  "estimated_minutes": 20,
+  "brief": "All router adjacencies are Full, but EDGE-A has no OSPF route to the SITE-B LAN. Verify the neighbor state first, then compare OSPF network participation and route tables. This model derives advertised prefixes and selected OSPF routes across Full adjacencies only; it does not model LSAs, metrics, DR/BDR, timers, authentication, or packet forwarding.",
+  "objectives": ["Prove the adjacency is Full", "Advertise the SITE-B LAN in area 0", "Verify EDGE-A selects the remote OSPF route"],
+  "hints": ["A Full adjacency and missing route point to advertisement or selection, not Hello packets.", "Inspect EDGE-B's OSPF network statements.", "The SITE-B LAN is 10.20.20.0/24."],
+  "campus_fault": "ospf-route",
+  "checks": []
+}
