@@ -214,6 +214,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .exam-panel label { display: block; margin: 14px 0 6px; color: var(--muted); font-size: 0.78rem; }
 .exam-panel input { width: 100%; min-height: 42px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--text); background: #091419; }
 .exam-panel button { margin-top: 10px; }
+.exam-review-action { margin: 10px 8px 0 0; min-height: 36px; font-size: 0.78rem; }
 .hints summary { cursor: pointer; color: var(--amber); font-weight: 700; font-size: 0.85rem; }
 .hints ul { padding-left: 21px; color: var(--muted); font-size: 0.82rem; line-height: 1.5; }
 

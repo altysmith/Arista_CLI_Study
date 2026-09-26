@@ -82,6 +82,9 @@ class CommandReferenceTests(unittest.TestCase):
             result = app.submit_exam(exam["id"], {"answers": answers})
             self.assertEqual(result["score"], result["total"])
             self.assertEqual(result["remediation"], [])
+            retry = app.start_exam()
+            missed = app.submit_exam(retry["id"], {"answers": ["wrong"] * retry["question_count"]})
+            self.assertIn("exercise_id", missed["remediation"][0])
 
 
 if __name__ == "__main__":

@@ -35,6 +35,7 @@ def public_exam(questions: list[dict[str, str]], started_at: str, exam_id: str) 
 def score_exam(questions: list[dict[str, str]], answers: list[str]) -> dict[str, Any]:
     if len(answers) != len(questions) or not all(isinstance(answer, str) for answer in answers):
         raise ValueError("An answer is required for every exam question")
+    families = load_exercise_families()
     results = []
     remediation: dict[str, dict[str, Any]] = {}
     for question, answer in zip(questions, answers):
@@ -44,5 +45,10 @@ def score_exam(questions: list[dict[str, str]], answers: list[str]) -> dict[str,
             item = remediation.setdefault(result["topic_id"], {"topic_id": result["topic_id"], "missed": 0, "modes": set()})
             item["missed"] += 1
             item["modes"].add(result["mode"])
+    remediation_items = []
+    for item in remediation.values():
+        recommendation = next(family for family in families if family["topic_id"] == item["topic_id"])
+        remediation_items.append({**item, "modes": sorted(item["modes"]), "exercise_id": recommendation["id"],
+                                  "mode": recommendation["mode"], "lab_id": recommendation.get("lab_id")})
     return {"score": sum(item["correct"] for item in results), "total": len(results), "results": results,
-            "remediation": [{**item, "modes": sorted(item["modes"])} for item in remediation.values()]}
+            "remediation": remediation_items}

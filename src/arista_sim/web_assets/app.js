@@ -451,8 +451,26 @@ document.querySelector("#exam-next").addEventListener("click", async () => {
   if (state.examIndex + 1 < state.exam.question_count) { state.examIndex += 1; renderExam(state.exam); return; }
   try {
     const result = await api(`/api/exams/${state.exam.id}/submit`, {method: "POST", body: JSON.stringify({answers: state.examAnswers})});
-    document.querySelector("#exam-result").className = "exercise-result correct";
-    document.querySelector("#exam-result").textContent = `Score: ${result.score}/${result.total}. Review next: ${result.remediation.length ? result.remediation.map(item => `${item.topic_id} (${item.missed} missed)`).join(", ") : "all covered topics"}.`;
+    const review = document.querySelector("#exam-result");
+    review.className = "exercise-result correct";
+    review.replaceChildren(document.createTextNode(`Score: ${result.score}/${result.total}. `));
+    if (!result.remediation.length) review.append("All covered topics passed.");
+    for (const item of result.remediation) {
+      const practice = document.createElement("button");
+      practice.type = "button";
+      practice.className = "secondary-button exam-review-action";
+      practice.textContent = `Practice ${item.topic_id} (${item.missed} missed)`;
+      practice.addEventListener("click", async () => renderExercise(await api(`/api/study-now?topic_id=${encodeURIComponent(item.topic_id)}&mode=${encodeURIComponent(item.mode)}`)));
+      review.append(practice);
+      if (item.lab_id) {
+        const lab = document.createElement("button");
+        lab.type = "button";
+        lab.className = "secondary-button exam-review-action";
+        lab.textContent = "Open supporting lab";
+        lab.addEventListener("click", () => startSession(item.lab_id));
+        review.append(lab);
+      }
+    }
     document.querySelector("#exam-next").disabled = true;
   } catch (error) { document.querySelector("#exam-result").className = "exercise-result incorrect"; document.querySelector("#exam-result").textContent = error.message; }
 });
