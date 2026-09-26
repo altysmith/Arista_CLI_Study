@@ -93,6 +93,16 @@ def _grade_check(device: DeviceState, check: dict[str, Any]) -> dict[str, Any]:
         passed = interface is not None and interface.ip_access_groups.get(str(check["direction"])) == check["name"]
     elif check_type == "dhcp_snooping_vlans":
         passed = device.dhcp_snooping_enabled and set(check["vlans"]).issubset(device.dhcp_snooping_vlans)
+    elif check_type == "class_map_access_group":
+        class_map = device.class_maps.get(str(check["name"]))
+        passed = class_map is not None and class_map.access_group == check["access_group"]
+    elif check_type == "policy_class_action":
+        policy = device.policy_maps.get(str(check["policy"]))
+        policy_class = policy.classes.get(str(check["class_name"])) if policy is not None else None
+        passed = policy_class is not None and check["action"] in policy_class.actions
+    elif check_type == "interface_service_policy":
+        interface = device.interfaces.get(str(check["interface"]))
+        passed = interface is not None and interface.service_policies.get(str(check["direction"])) == check["policy"]
     else:
         raise ValueError(f"Unsupported lab check type: {check_type}")
 

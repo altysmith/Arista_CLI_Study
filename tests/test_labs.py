@@ -2,7 +2,7 @@ import unittest
 
 from arista_sim import DeviceState
 from arista_sim.labs import get_lab, grade_lab, load_labs, public_lab
-from arista_sim.models.device import AccessList, OspfProcess, StaticRoute
+from arista_sim.models.device import AccessList, OspfProcess, PolicyClass, StaticRoute
 
 
 class LabTests(unittest.TestCase):
@@ -95,6 +95,19 @@ class LabTests(unittest.TestCase):
         device.dhcp_snooping_vlans.add(20)
         device.interfaces["Ethernet48"].dhcp_snooping_trust = True
         grade = grade_lab(device, lab, ["show ip dhcp snooping", "show running-config"])
+        self.assertTrue(grade["passed"])
+        self.assertEqual(grade["process_passed_count"], 2)
+
+    def test_qos_voice_marking_grades_classification_marking_and_attachment(self):
+        device = DeviceState()
+        lab = get_lab("qos-voice-marking")
+        self.assertFalse(grade_lab(device, lab)["passed"])
+
+        device.access_lists["VOICE-ACL"] = AccessList("VOICE-ACL", ["10 permit udp any any"])
+        device.ensure_class_map("VOICE").access_group = "VOICE-ACL"
+        device.ensure_policy_map("EDGE-QOS").classes["VOICE"] = PolicyClass("VOICE", ["set dscp 46"])
+        device.interfaces["Ethernet1"].service_policies["input"] = "EDGE-QOS"
+        grade = grade_lab(device, lab, ["show policy-map", "show running-config"])
         self.assertTrue(grade["passed"])
         self.assertEqual(grade["process_passed_count"], 2)
 
