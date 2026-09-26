@@ -1,8 +1,9 @@
 """A bounded, loop-free Layer 2 campus lab. No routing or STP emulation."""
 from collections import deque
-from ipaddress import ip_interface
+from ipaddress import ip_address, ip_interface, ip_network
 
 from .cli.session import Session
+from .models.device import StaticRoute
 
 SWITCHES = ("DIST-1", "ACCESS-A", "ACCESS-B")
 LINKS = [("DIST-1", "Ethernet1", "ACCESS-A", "Ethernet48"),
@@ -170,3 +171,171 @@ class Campus:
         return {"switches": list(SWITCHES), "links": [{"a": a, "ap": ap, "b": b, "bp": bp,
                 "up": self.link_up(a, ap, b, bp)} for a, ap, b, bp in LINKS],
                 "hosts": [{"id": h, "switch": n, "port": p, "address": ip, "mac": mac, "arp": self.arp[h]} for h, (n, p, ip, mac) in HOSTS.items()]}
+
+
+ROUTED_SWITCHES = ("EDGE-A", "CORE-1", "EDGE-B")
+ROUTED_LINKS = [("EDGE-A", "Ethernet1", "CORE-1", "Ethernet1"),
+                ("CORE-1", "Ethernet2", "EDGE-B", "Ethernet1")]
+ROUTED_HOSTS = {
+    "SITE-A": ("EDGE-A", "Ethernet2", "10.10.10.10/24", "10.10.10.1", "02:00:00:01:10:10"),
+    "SITE-B": ("EDGE-B", "Ethernet2", "10.20.20.10/24", "10.20.20.1", "02:00:00:01:20:10"),
+}
+
+
+class RoutedCampusSession(Session):
+    def __init__(self, campus, name):
+        self.campus, self.node = campus, name
+        super().__init__()
+
+    def _show_lldp(self, _):
+        lines = ["Port        Neighbor Device ID     Neighbor Port ID"]
+        for a, ap, b, bp in ROUTED_LINKS:
+            if self.node == b:
+                a, ap, b, bp = b, bp, a, ap
+            if self.node == a and self.campus.link_up(a, ap, b, bp):
+                lines.append(f"{ap:<12}{b:<23}{bp}")
+        return "\n".join(lines) if len(lines) > 1 else lines[0] + "\nNo active neighbors"
+
+    def _show_interfaces_status(self, args):
+        lines = ["Port         Name                  Status         Vlan"]
+        for name, port in self.device.interfaces.items():
+            if args.get("interface") and name != args["interface"]:
+                continue
+            linked = any((a == self.node and ap == name or b == self.node and bp == name)
+                         and self.campus.link_up(a, ap, b, bp) for a, ap, b, bp in ROUTED_LINKS)
+            linked |= any(a == self.node and ap == name for a, ap, *_ in ROUTED_HOSTS.values())
+            status = "disabled" if not port.admin_up else "connected" if linked else "notconnect"
+            vlan = "routed" if port.switchport_mode == "routed" else str(port.access_vlan)
+            lines.append(f"{name:<13}{port.description[:20]:<22}{status:<15}{vlan}")
+        return "\n".join(lines)
+
+
+class RoutedCampus:
+    """A fixed three-router topology that evaluates static IPv4 forwarding and return paths only."""
+    def __init__(self, fault="static"):
+        if fault != "static":
+            raise ValueError("Unknown routed campus fault")
+        self.fault = fault
+        self.sessions = {name: RoutedCampusSession(self, name) for name in ROUTED_SWITCHES}
+        self.arp = {name: {} for name in ROUTED_HOSTS}
+        self.mac = {name: {} for name in ROUTED_SWITCHES}
+        self.evidence = set()
+        self._configure()
+
+    def _run(self, node, commands):
+        cli = self.sessions[node]
+        for command in commands:
+            result = cli.execute(command)
+            if result.startswith("%"):
+                raise ValueError(result)
+        cli.history.clear()
+
+    def _configure(self):
+        interfaces = {
+            "EDGE-A": (("Ethernet1", "192.0.2.1/30"), ("Ethernet2", "10.10.10.1/24")),
+            "CORE-1": (("Ethernet1", "192.0.2.2/30"), ("Ethernet2", "198.51.100.1/30")),
+            "EDGE-B": (("Ethernet1", "198.51.100.2/30"), ("Ethernet2", "10.20.20.1/24")),
+        }
+        routes = {
+            "EDGE-A": (("10.20.20.0/24", "192.0.2.2"),),
+            "CORE-1": (("10.10.10.0/24", "192.0.2.1"), ("10.20.20.0/24", "198.51.100.2")),
+            "EDGE-B": (),
+        }
+        for node in ROUTED_SWITCHES:
+            commands = ["enable", "configure terminal", f"hostname {node}", "ip routing"]
+            for port, address in interfaces[node]:
+                commands += [f"interface {port}", "no switchport", f"ip address {address}", "no shutdown", "exit"]
+            for prefix, next_hop in routes[node]:
+                commands.append(f"ip route {prefix} {next_hop}")
+            commands += ["end", "copy running-config startup-config", "disable"]
+            self._run(node, commands)
+
+    def port(self, node, port):
+        return self.sessions[node].device.interfaces[port]
+
+    def link_up(self, a, ap, b, bp):
+        return self.port(a, ap).admin_up and self.port(b, bp).admin_up
+
+    @staticmethod
+    def _has_address(port, address):
+        return any(ip_address(address) == ip_interface(configured).ip for configured in port.ipv4_addresses)
+
+    def _linked_peer(self, node, port):
+        for a, ap, b, bp in ROUTED_LINKS:
+            if node == a and port == ap and self.link_up(a, ap, b, bp):
+                return b, bp
+            if node == b and port == bp and self.link_up(a, ap, b, bp):
+                return a, ap
+        return None
+
+    def _route(self, node, destination):
+        device = self.sessions[node].device
+        if not device.ip_routing:
+            return None, "IP routing is disabled"
+        address = ip_address(destination)
+        direct = [(ip_interface(configured).network.prefixlen, port) for port in device.interfaces.values()
+                  for configured in port.ipv4_addresses if address in ip_interface(configured).network]
+        if direct:
+            return max(direct, key=lambda item: item[0])[1], None
+        matches = [(ip_network(route.prefix, strict=False).prefixlen, route) for route in device.static_routes
+                   if address in ip_network(route.prefix, strict=False)]
+        if not matches:
+            return None, "no matching static route"
+        route = max(matches, key=lambda item: item[0])[1]
+        for port in device.interfaces.values():
+            if any(ip_address(route.next_hop) in ip_interface(configured).network for configured in port.ipv4_addresses):
+                return port, route.next_hop
+        return None, "next hop is not directly reachable"
+
+    def _forward(self, source, destination):
+        host = ROUTED_HOSTS[source]
+        destination_address = str(ip_interface(ROUTED_HOSTS[destination][2]).ip)
+        gateway_port = self.port(host[0], host[1])
+        if not gateway_port.admin_up or not self._has_address(gateway_port, host[3]):
+            return False, [source], "host gateway is unavailable"
+        node, path = host[0], [source, host[0]]
+        for _ in range(len(ROUTED_SWITCHES) + 1):
+            port, detail = self._route(node, destination_address)
+            if port is None:
+                return False, path, f"{node}: {detail}"
+            peer = self._linked_peer(node, port.name)
+            if peer is None:
+                if any(n == node and p == port.name and str(ip_interface(address).ip) == destination_address
+                       for n, p, address, *_ in ROUTED_HOSTS.values()):
+                    return True, path + [destination], ""
+                return False, path, f"{node}: destination is not reachable on {port.name}"
+            next_node, next_port = peer
+            if not port.admin_up or not self.port(next_node, next_port).admin_up:
+                return False, path, f"{node}: routed link is down"
+            if detail and not self._has_address(self.port(next_node, next_port), detail):
+                return False, path, f"{node}: next hop {detail} is unavailable"
+            node = next_node
+            path.append(node)
+        return False, path, "routing loop detected"
+
+    def ping(self, source, destination, learn=True):
+        if source not in ROUTED_HOSTS or destination not in ROUTED_HOSTS or source == destination:
+            raise ValueError("Choose two different routed-lab hosts")
+        if learn:
+            self.evidence.add("host_ping")
+        forward, forward_path, reason = self._forward(source, destination)
+        reverse, reverse_path, reverse_reason = self._forward(destination, source) if forward else (False, [], "")
+        if forward and reverse:
+            self.arp[source][str(ip_interface(ROUTED_HOSTS[destination][2]).ip)] = ROUTED_HOSTS[destination][4]
+            self.arp[destination][str(ip_interface(ROUTED_HOSTS[source][2]).ip)] = ROUTED_HOSTS[source][4]
+            return {"success": True, "output": f"{source} → {destination}: reply received (simulated IPv4). Path: " + " → ".join(forward_path)}
+        detail = reason if not forward else f"return path failed: {reverse_reason}"
+        return {"success": False, "output": f"{source} → {destination}: request timed out; {detail}."}
+
+    def grade(self):
+        success = self.ping("SITE-A", "SITE-B", False)["success"]
+        histories = [command.casefold() for cli in self.sessions.values() for command in cli.history]
+        results = [{"label": "SITE-A reaches SITE-B through the routed path", "passed": success},
+                   {"label": "SITE-B has a return route to SITE-A", "passed": any(route.prefix == "10.10.10.0/24" and route.next_hop == "198.51.100.1" for route in self.sessions["EDGE-B"].device.static_routes)}]
+        process = [{"label": "Tested end-to-end host connectivity", "passed": "host_ping" in self.evidence},
+                   {"label": "Inspected a routing table", "passed": any(command.startswith("show ip route") for command in histories)},
+                   {"label": "Mapped a routed link with LLDP", "passed": any(command.startswith("show lldp") for command in histories)}]
+        return {"results": results, "passed": all(item["passed"] for item in results), "passed_count": sum(item["passed"] for item in results), "total_count": len(results), "process": process, "process_passed_count": sum(item["passed"] for item in process), "process_total_count": len(process)}
+
+    def view(self):
+        return {"title": "Three-router static-routing path", "subtitle": "Fictional routed topology · static IPv4 only", "limits": "The simulator evaluates directly connected and static IPv4 routes plus return paths. It does not model OSPF adjacency or route exchange, ARP on routers, ACL enforcement, packet loss, or timing.", "switches": list(ROUTED_SWITCHES), "links": [{"a": a, "ap": ap, "b": b, "bp": bp, "up": self.link_up(a, ap, b, bp)} for a, ap, b, bp in ROUTED_LINKS], "hosts": [{"id": name, "switch": node, "port": port, "address": address, "mac": mac, "arp": self.arp[name]} for name, (node, port, address, gateway, mac) in ROUTED_HOSTS.items()]}

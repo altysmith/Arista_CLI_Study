@@ -55,14 +55,10 @@
         </section>
       </section>
       <section id="campus-panel" class="campus-panel" aria-label="Campus topology" hidden>
-        <div class="section-heading"><h2>College access network</h2><span>Fictional campus · Layer 2</span></div>
+        <div class="section-heading"><h2 id="topology-title">College access network</h2><span id="topology-subtitle">Fictional campus · Layer 2</span></div>
         <div class="topology">
-          <button class="node distribution" data-device="DIST-1" type="button">DIST-1<span>Distribution switch</span></button>
-          <div class="uplinks"><span id="link-a">Et1 ↔ Et48</span><span id="link-b">Et2 ↔ Et48</span></div>
-          <div class="access-row">
-            <button class="node" data-device="ACCESS-A" type="button">ACCESS-A<span>College A</span></button>
-            <button class="node" data-device="ACCESS-B" type="button">ACCESS-B<span>College B</span></button>
-          </div>
+          <div id="topology-nodes" class="access-row"></div>
+          <div id="topology-links" class="uplinks"></div>
           <div id="host-list" class="host-list"></div>
         </div>
         <form id="ping-form" class="ping-controls">
@@ -70,9 +66,9 @@
           <label>To <select id="ping-destination" aria-label="Destination host"></select></label>
           <button class="secondary-button" type="submit">Ping host</button>
         </form>
-        <p id="ping-result" role="status">Test a host pair, then inspect MAC learning in the switch consoles.</p>
+        <p id="ping-result" role="status">Test a host pair, then inspect the relevant switch or router evidence.</p>
         <details><summary>Host ARP tables and simulation limits</summary><pre id="host-arp">No learned entries.</pre>
-          <p>Same-subnet traffic on this fixed, loop-free topology is simulated. Routing, STP convergence, LACP, MLAG, ACL enforcement, and traffic timing are not modeled. Learning tables clear on configuration changes and server restart. Switch ARP stays empty because no Layer 3 interface participates.</p>
+          <p id="topology-limits">Same-subnet traffic on this fixed, loop-free topology is simulated. Routing, STP convergence, LACP, MLAG, ACL enforcement, and traffic timing are not modeled. Learning tables clear on configuration changes and server restart. Switch ARP stays empty because no Layer 3 interface participates.</p>
         </details>
       </section>
       <section class="terminal-card" aria-label="EOS terminal">

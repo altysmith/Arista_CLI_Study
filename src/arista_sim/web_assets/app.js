@@ -405,10 +405,24 @@ function renderCampus(campus, active) {
   document.querySelector("#campus-panel").hidden = !campus;
   document.querySelector("#device-title").textContent = active || "Training switch";
   if (!campus) return;
-  document.querySelectorAll("[data-device]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.device === active)));
-  campus.links.forEach((link, i) => {
-    document.querySelector(i ? "#link-b" : "#link-a").textContent = `${link.ap.replace("Ethernet", "Et")} ↔ ${link.bp.replace("Ethernet", "Et")} · ${link.up ? "up" : "down"}`;
-  });
+  document.querySelector("#topology-title").textContent = campus.title || "College access network";
+  document.querySelector("#topology-subtitle").textContent = campus.subtitle || "Fictional campus · Layer 2";
+  document.querySelector("#topology-limits").textContent = campus.limits || "Same-subnet traffic on this fixed, loop-free topology is simulated. Routing, STP convergence, LACP, MLAG, ACL enforcement, and traffic timing are not modeled. Learning tables clear on configuration changes and server restart. Switch ARP stays empty because no Layer 3 interface participates.";
+  document.querySelector("#topology-nodes").replaceChildren(...campus.switches.map(name => {
+    const button = document.createElement("button");
+    button.className = "node";
+    button.type = "button";
+    button.dataset.device = name;
+    button.setAttribute("aria-pressed", String(name === active));
+    button.append(name);
+    button.addEventListener("click", () => selectCampusDevice(name));
+    return button;
+  }));
+  document.querySelector("#topology-links").replaceChildren(...campus.links.map(link => {
+    const label = document.createElement("span");
+    label.textContent = `${link.a} ${link.ap.replace("Ethernet", "Et")} ↔ ${link.b} ${link.bp.replace("Ethernet", "Et")} · ${link.up ? "up" : "down"}`;
+    return label;
+  }));
   const hosts = [...campus.hosts].sort((a,b) => a.port.localeCompare(b.port) || a.switch.localeCompare(b.switch));
   document.querySelector("#host-list").replaceChildren(...hosts.map(h => {
     const p = document.createElement("p");
@@ -419,7 +433,7 @@ function renderCampus(campus, active) {
     const select = document.getElementById(id);
     const previous = select.value;
     select.replaceChildren(...campus.hosts.map(h => new Option(h.id, h.id)));
-    select.value = previous || (id === "ping-source" ? "STAFF-A" : "STAFF-B");
+    select.value = campus.hosts.some(h => h.id === previous) ? previous : campus.hosts[id === "ping-source" ? 0 : 1]?.id;
   }
   document.querySelector("#host-arp").textContent = campus.hosts.map(h => `${h.id}: ${Object.entries(h.arp).map(([ip, mac]) => `${ip} → ${mac}`).join(", ") || "No learned entries"}`).join("\n");
 }
@@ -513,13 +527,13 @@ function renderExercise(exercise) {
   }));
 }
 
-document.querySelectorAll("[data-device]").forEach(button => button.addEventListener("click", async () => {
+async function selectCampusDevice(device) {
   if (state.busy) return;
   state.busy = true;
   labSelect.disabled = true;
   input.disabled = true;
   try {
-    const result = await api(`/api/sessions/${state.sessionId}/campus`, {method: "POST", body: JSON.stringify({device: button.dataset.device})});
+    const result = await api(`/api/sessions/${state.sessionId}/campus`, {method: "POST", body: JSON.stringify({device})});
     state.prompt = result.prompt;
     promptLabel.textContent = result.prompt;
     state.history = result.history;
@@ -530,7 +544,7 @@ document.querySelectorAll("[data-device]").forEach(button => button.addEventList
     input.focus({ preventScroll: true });
   } catch (error) { appendLine(error.message, "error-line"); input.disabled = false; }
   finally { state.busy = false; labSelect.disabled = false; }
-}));
+}
 
 document.querySelector("#ping-form").addEventListener("submit", async event => {
   event.preventDefault();

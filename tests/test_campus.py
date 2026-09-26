@@ -2,11 +2,37 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from arista_sim.campus import Campus
+from arista_sim.campus import Campus, RoutedCampus
 from arista_sim.web import LabApplication
 
 
 class CampusTests(unittest.TestCase):
+    def test_routed_campus_requires_a_static_return_route(self):
+        campus = RoutedCampus()
+        self.assertFalse(campus.ping("SITE-A", "SITE-B")["success"])
+        self.assertIn("return path failed", campus.ping("SITE-A", "SITE-B")["output"])
+        edge_b = campus.sessions["EDGE-B"]
+        for command in ["enable", "show lldp neighbors", "show ip route", "configure terminal", "ip route 10.10.10.0/24 198.51.100.1", "end"]:
+            self.assertFalse(edge_b.execute(command).startswith("%"))
+        self.assertTrue(campus.ping("SITE-A", "SITE-B")["success"])
+        self.assertTrue(campus.grade()["passed"])
+        self.assertEqual(campus.grade()["process_passed_count"], 3)
+
+    def test_routed_campus_ticket_uses_the_browser_session_and_resumes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "progress.sqlite3"
+            app = LabApplication(path)
+            created = app.create_session({"lab_id": "routed-static-return-ticket"})
+            self.assertEqual(created["active"], "EDGE-A")
+            sid = created["session_id"]
+            app.campus_action(sid, {"device": "EDGE-B"})
+            for command in ["enable", "configure terminal", "ip route 10.10.10.0/24 198.51.100.1", "end"]:
+                app.execute(sid, {"command": command})
+            self.assertTrue(app.campus_action(sid, {"source": "SITE-A", "destination": "SITE-B"})["success"])
+            resumed = LabApplication(path).create_session({"lab_id": "routed-static-return-ticket", "resume": True})
+            self.assertEqual(resumed["active"], "EDGE-B")
+            self.assertTrue(LabApplication(path).grade(resumed["session_id"])["passed"])
+
     def test_healthy_forwarding_learns_mac_and_host_arp(self):
         campus = Campus()
         self.assertTrue(campus.grade()["passed"])

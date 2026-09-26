@@ -18,7 +18,7 @@ from .cli.session import Session
 from .labs import get_lab, grade_lab, load_labs, load_sections, public_lab
 from .reference import load_command_reference
 from .persistence import ProgressDatabase, dump_cli, restore_cli
-from .campus import Campus
+from .campus import Campus, RoutedCampus
 from .curriculum import load_curriculum
 from .exercises import choose_study_now, evaluate_attempt, exercise_choices
 from .exam import build_exam, public_exam, score_exam
@@ -31,7 +31,7 @@ MAX_REQUEST_BYTES = 64 * 1024
 class BrowserSession:
     cli: Session
     lab_id: str
-    campus: Campus | None = None
+    campus: Campus | RoutedCampus | None = None
     active: str = ""
 
 
@@ -56,8 +56,9 @@ class SessionStore:
 
     def _new(self, lab):
         if lab.get("campus_fault"):
-            campus = Campus(lab["campus_fault"])
-            return BrowserSession(campus.sessions["DIST-1"], lab["id"], campus, "DIST-1")
+            campus = RoutedCampus() if lab["campus_fault"] == "routing" else Campus(lab["campus_fault"])
+            active = next(iter(campus.sessions))
+            return BrowserSession(campus.sessions[active], lab["id"], campus, active)
         return BrowserSession(self._starting_session(lab), lab["id"])
 
     def create(self, lab_id: str) -> tuple[str, BrowserSession]:
