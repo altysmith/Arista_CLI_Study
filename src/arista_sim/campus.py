@@ -349,6 +349,29 @@ class RoutedCampus:
                         routes.append({"prefix": network, "owner": remote})
         return routes
 
+    def _ospf_next_hop(self, node, owner):
+        queue, previous = [node], {node: None}
+        while queue:
+            current = queue.pop(0)
+            if current == owner:
+                break
+            for a, ap, b, bp in ROUTED_LINKS:
+                if current not in (a, b):
+                    continue
+                port = ap if current == a else bp
+                peer, state = self.ospf_neighbor_state(current, port)
+                if state == "Full" and peer not in previous:
+                    previous[peer] = (current, port)
+                    queue.append(peer)
+        if owner not in previous:
+            return None
+        step = owner
+        while previous[step] and previous[step][0] != node:
+            step = previous[step][0]
+        _, port = previous[step]
+        peer_port = next(bp if a == node and ap == port else ap for a, ap, b, bp in ROUTED_LINKS if (a == node and ap == port) or (b == node and bp == port))
+        return self.port(node, port), self.port(step, peer_port).ipv4_addresses[0].split("/")[0]
+
     def ip_route_output(self, node):
         lines = ["Codes: C - connected, S - static, O - OSPF", ""]
         device = self.sessions[node].device
@@ -389,7 +412,10 @@ class RoutedCampus:
         matches = [(ip_network(route.prefix, strict=False).prefixlen, route) for route in device.static_routes
                    if address in ip_network(route.prefix, strict=False)]
         if not matches:
-            return None, "no matching static route"
+            ospf = [(ip_network(route["prefix"], strict=False).prefixlen, route) for route in self.ospf_routes(node) if address in ip_network(route["prefix"], strict=False)]
+            if not ospf:
+                return None, "no matching static or OSPF route"
+            return self._ospf_next_hop(node, max(ospf, key=lambda item: item[0])[1]["owner"])
         route = max(matches, key=lambda item: item[0])[1]
         for port in device.interfaces.values():
             if any(ip_address(route.next_hop) in ip_interface(configured).network for configured in port.ipv4_addresses):

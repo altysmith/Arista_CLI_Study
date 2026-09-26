@@ -44,10 +44,12 @@ class CampusTests(unittest.TestCase):
         campus = RoutedCampus("ospf-route")
         self.assertIn("FULL/-", campus.sessions["EDGE-A"].execute("show ip ospf neighbor"))
         self.assertNotIn("O        10.20.20.0/24", campus.sessions["EDGE-A"].execute("show ip route"))
+        self.assertFalse(campus.ping("SITE-A", "SITE-B")["success"])
         edge_b = campus.sessions["EDGE-B"]
         for command in ["enable", "configure terminal", "router ospf 1", "network 10.20.20.0/24 area 0", "end"]:
             self.assertFalse(edge_b.execute(command).startswith("%"))
         self.assertIn("O        10.20.20.0/24", campus.sessions["EDGE-A"].execute("show ip route"))
+        self.assertTrue(campus.ping("SITE-A", "SITE-B")["success"])
         self.assertTrue(campus.grade()["passed"])
 
     def test_routed_campus_ticket_uses_the_browser_session_and_resumes(self):
