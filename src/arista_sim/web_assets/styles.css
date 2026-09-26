@@ -66,6 +66,12 @@ button, input { font: inherit; }
   border-bottom: 1px solid rgba(144, 166, 174, 0.16);
 }
 
+.header-guide {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
 .eyebrow {
   margin: 0 0 4px;
   color: var(--cyan);
@@ -103,7 +109,12 @@ h1 { margin-bottom: 0; font-size: clamp(1.35rem, 2.5vw, 2rem); letter-spacing: -
   margin: 0 auto;
   padding: clamp(18px, 3vw, 42px);
   display: grid;
-  grid-template-columns: minmax(0, 1.75fr) minmax(320px, 0.75fr);
+  grid-template-columns: minmax(360px, 0.85fr) minmax(620px, 1.65fr);
+  grid-template-areas:
+    "lab terminal"
+    "campus campus"
+    "review review"
+    "curriculum curriculum";
   gap: clamp(18px, 2.5vw, 34px);
 }
 
@@ -115,7 +126,7 @@ h1 { margin-bottom: 0; font-size: clamp(1.35rem, 2.5vw, 2rem); letter-spacing: -
   overflow: hidden;
 }
 
-.terminal-card { min-height: 690px; display: flex; flex-direction: column; }
+.terminal-card { grid-area: terminal; min-height: 690px; display: flex; flex-direction: column; }
 
 .terminal-toolbar {
   display: flex;
@@ -195,7 +206,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .terminal-input-row input { width: 100%; border: 0; outline: 0; color: var(--text); background: transparent; }
 .terminal-input-row input:disabled { opacity: 0.45; }
 
-.lab-card { align-self: start; padding: clamp(22px, 3vw, 32px); }
+.lab-card { grid-area: lab; align-self: start; padding: clamp(22px, 3vw, 32px); }
 .lab-picker-label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 0.7rem; font-weight: 750; letter-spacing: 0.09em; text-transform: uppercase; }
 .lab-select { width: 100%; min-height: 44px; margin-bottom: 20px; padding: 0 38px 0 12px; border: 1px solid var(--line); border-radius: 9px; color: var(--text); background: var(--panel-raised); cursor: pointer; }
 .lab-select:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
@@ -264,9 +275,16 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .reference-empty { padding: 32px 24px; color: var(--muted); text-align: center; }
 
 @media (max-width: 900px) {
-  .workspace { grid-template-columns: 1fr; }
+  .workspace {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "lab"
+      "terminal"
+      "campus"
+      "review"
+      "curriculum";
+  }
   .terminal-card { min-height: 600px; }
-  .lab-card { order: -1; }
 }
 
 @media (max-width: 560px) {
@@ -283,8 +301,16 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
   .lab-actions { grid-template-columns: 1fr; }
 }
 
-.study-browser { grid-column: 1 / -1; padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
-.study-browser > .lab-select { max-width: 420px; }
+.study-browser, .study-session { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.study-browser { grid-area: curriculum; }
+.study-session { grid-area: review; border-color: rgba(70, 214, 208, .28); }
+.study-browser > summary, .study-session > summary { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 17px 20px; cursor: pointer; list-style: none; }
+.study-browser > summary::-webkit-details-marker, .study-session > summary::-webkit-details-marker { display: none; }
+.study-browser > summary span:first-child, .study-session > summary span:first-child { color: var(--text); font-weight: 750; }
+.study-browser > summary span:last-child, .study-session > summary span:last-child { color: var(--muted); font-size: .8rem; text-align: right; }
+.study-browser[open] > summary, .study-session[open] > summary { border-bottom: 1px solid var(--line); }
+.study-browser-content { padding: 22px 24px 24px; }
+.study-browser .lab-select { max-width: 420px; }
 .study-browser p { color: var(--muted); line-height: 1.5; }
 .study-topics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 14px; }
 .study-topic { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 10px; }
@@ -295,7 +321,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .study-checkpoint summary { cursor: pointer; color: var(--amber); line-height: 1.5; }
 .study-sources a { display: inline-block; color: var(--cyan); margin-right: 14px; }
 .study-note { font-size: .8rem; }
-.study-session { grid-column: 1 / -1; padding: 22px 24px; border: 1px solid rgba(70, 214, 208, .28); border-radius: 16px; background: linear-gradient(120deg, rgba(70, 214, 208, .10), var(--panel)); }
+.study-session-content { padding: 22px 24px 24px; background: linear-gradient(120deg, rgba(70, 214, 208, .07), var(--panel)); }
 .study-session .section-heading { margin-top: 0; }
 .study-session h2 { margin: 0; }
 .exercise-meta, .exercise-result { color: var(--muted); font-size: .82rem; }
@@ -314,6 +340,10 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .mistake-review { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
 .mistake-review::before { content: "Recent mistakes"; color: var(--amber); font-size: .75rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
 .mistake-review p { margin: 8px 0 0; color: var(--muted); font-size: .78rem; }
-@media (max-width: 900px) { .study-browser { order: -2; } }
-@media (max-width: 560px) { .exercise-form { grid-template-columns: 1fr; } }
-@media (max-width: 560px) { .practice-picker { grid-template-columns: 1fr; } }
+.campus-panel { grid-area: campus; }
+@media (max-width: 560px) {
+  .exercise-form, .practice-picker { grid-template-columns: 1fr; }
+  .study-browser > summary, .study-session > summary { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .study-browser > summary span:last-child, .study-session > summary span:last-child { text-align: left; }
+  .study-browser-content, .study-session-content { padding: 18px; }
+}

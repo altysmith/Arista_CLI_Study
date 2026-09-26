@@ -11,7 +11,8 @@
     <header class="app-header">
       <div>
         <p class="eyebrow">Network operations practice</p>
-        <h1>Arista CLI Lab</h1>
+        <h1>Arista CLI Practice Lab</h1>
+        <p class="header-guide">Choose a lab, work in the console, then check your result.</p>
       </div>
       <div class="connection" aria-live="polite">
         <span class="connection-dot"></span>
@@ -20,40 +21,6 @@
     </header>
 
     <main class="workspace">
-      <section class="study-browser" aria-labelledby="study-title">
-        <label class="lab-picker-label" for="section-select">Study section</label>
-        <select id="section-select" class="lab-select"></select>
-        <h2 id="study-title">Network Admin Prep</h2>
-        <p id="section-description"></p>
-        <div id="section-topics" class="study-topics"></div>
-        <p id="section-sources" class="study-sources"></p>
-        <p class="study-note">Future PDF study packs can be organized into sections with several focused labs. Share your PDFs in the task when ready.</p>
-      </section>
-      <section class="study-session" aria-labelledby="study-now-title">
-        <div class="section-heading"><h2 id="study-now-title">Study Now</h2><span id="study-reason"></span></div>
-        <form id="practice-picker" class="practice-picker"><label for="practice-choice">Practice a specific skill</label><select id="practice-choice"></select><button class="secondary-button" type="submit">Load practice</button></form>
-        <p id="exercise-mode" class="exercise-meta"></p>
-        <p id="exercise-prompt" class="exercise-prompt">Loading a focused practice question…</p>
-        <button id="supporting-lab" class="secondary-button" type="button" hidden>Open supporting lab</button>
-        <form id="exercise-form" class="exercise-form">
-          <label for="exercise-answer">Your answer</label>
-          <input id="exercise-answer" type="text" autocomplete="off" required>
-          <button id="exercise-submit" class="primary-button" type="submit">Check answer</button>
-        </form>
-        <details id="exercise-hints" class="hints"><summary>Need a hint?</summary><ol id="exercise-hint-list"></ol></details>
-        <p id="exercise-result" class="exercise-result" role="status"></p>
-        <div id="mastery-summary" class="mastery-summary" hidden></div>
-        <div id="mistake-review" class="mistake-review" hidden></div>
-        <div class="exam-launch"><button id="exam-start" class="secondary-button" type="button">Start integrated exam</button><span>8 varied questions · no hints · saved until submitted</span></div>
-        <section id="exam-panel" class="exam-panel" hidden aria-labelledby="exam-title">
-          <div class="section-heading"><h3 id="exam-title">Integrated readiness exam</h3><span id="exam-progress"></span></div>
-          <p id="exam-timer" class="exercise-meta"></p>
-          <p id="exam-prompt" class="exercise-prompt"></p>
-          <label for="exam-answer">Your answer</label><input id="exam-answer" type="text" autocomplete="off">
-          <button id="exam-next" class="primary-button" type="button">Next question</button>
-          <div id="exam-result" class="exercise-result" role="status"></div>
-        </section>
-      </section>
       <section id="campus-panel" class="campus-panel" aria-label="Campus topology" hidden>
         <div class="section-heading"><h2 id="topology-title">College access network</h2><span id="topology-subtitle">Fictional campus · Layer 2</span></div>
         <div class="topology">
@@ -82,7 +49,7 @@
             <span class="device-icon">SW</span>
             <div>
               <strong id="device-title">Training switch</strong>
-              <span>EOS practice session</span>
+              <span>2. Run EOS commands here</span>
             </div>
           </div>
           <div class="terminal-actions">
@@ -98,7 +65,7 @@
       </section>
 
       <aside class="lab-card" aria-label="Lab instructions">
-        <label class="lab-picker-label" for="lab-select">Practice lab</label>
+        <label class="lab-picker-label" for="lab-select">1. Choose a practice lab</label>
         <select id="lab-select" class="lab-select" aria-label="Select a practice lab"></select>
         <div class="lab-heading">
           <span id="lab-difficulty" class="badge">Foundation</span>
@@ -125,12 +92,54 @@
         </details>
 
         <div class="lab-actions">
-          <button id="check-work" class="primary-button" type="button">Check my work</button>
+          <button id="check-work" class="primary-button" type="button">3. Check my work</button>
           <button id="reset-lab" class="secondary-button" type="button">Reset lab</button>
         </div>
         <p class="keyboard-help">Enter runs a command · ↑ and ↓ recall commands · Ctrl+L clears the screen</p>
         <p id="save-status" class="keyboard-help" role="status"></p>
       </aside>
+
+      <details class="study-session" aria-labelledby="study-now-title">
+        <summary><span id="study-now-title">Quick review</span><span>Optional question practice and exam</span></summary>
+        <div class="study-session-content">
+          <div class="section-heading"><h2>Quick review</h2><span id="study-reason"></span></div>
+          <form id="practice-picker" class="practice-picker"><label for="practice-choice">Practice a specific skill</label><select id="practice-choice"></select><button class="secondary-button" type="submit">Load practice</button></form>
+          <p id="exercise-mode" class="exercise-meta"></p>
+          <p id="exercise-prompt" class="exercise-prompt">Loading a focused practice question…</p>
+          <button id="supporting-lab" class="secondary-button" type="button" hidden>Open supporting lab</button>
+          <form id="exercise-form" class="exercise-form">
+            <label for="exercise-answer">Your answer</label>
+            <input id="exercise-answer" type="text" autocomplete="off" required>
+            <button id="exercise-submit" class="primary-button" type="submit">Check answer</button>
+          </form>
+          <details id="exercise-hints" class="hints"><summary>Need a hint?</summary><ol id="exercise-hint-list"></ol></details>
+          <p id="exercise-result" class="exercise-result" role="status"></p>
+          <div id="mastery-summary" class="mastery-summary" hidden></div>
+          <div id="mistake-review" class="mistake-review" hidden></div>
+          <div class="exam-launch"><button id="exam-start" class="secondary-button" type="button">Start integrated exam</button><span>8 varied questions · no hints · saved until submitted</span></div>
+          <section id="exam-panel" class="exam-panel" hidden aria-labelledby="exam-title">
+            <div class="section-heading"><h3 id="exam-title">Integrated readiness exam</h3><span id="exam-progress"></span></div>
+            <p id="exam-timer" class="exercise-meta"></p>
+            <p id="exam-prompt" class="exercise-prompt"></p>
+            <label for="exam-answer">Your answer</label><input id="exam-answer" type="text" autocomplete="off">
+            <button id="exam-next" class="primary-button" type="button">Next question</button>
+            <div id="exam-result" class="exercise-result" role="status"></div>
+          </section>
+        </div>
+      </details>
+
+      <details class="study-browser" aria-labelledby="study-title">
+        <summary><span>Browse learning plan</span><span>Optional section notes, refreshers, and source links</span></summary>
+        <div class="study-browser-content">
+          <label class="lab-picker-label" for="section-select">Study section</label>
+          <select id="section-select" class="lab-select"></select>
+          <h2 id="study-title">Network Admin Prep</h2>
+          <p id="section-description"></p>
+          <div id="section-topics" class="study-topics"></div>
+          <p id="section-sources" class="study-sources"></p>
+          <p class="study-note">Use this area when you want to switch topics or refresh a concept. It is separate from the active lab above.</p>
+        </div>
+      </details>
     </main>
 
     <dialog id="command-reference" class="reference-dialog" aria-labelledby="reference-title">
