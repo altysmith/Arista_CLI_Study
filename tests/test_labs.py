@@ -111,6 +111,22 @@ class LabTests(unittest.TestCase):
         self.assertTrue(grade["passed"])
         self.assertEqual(grade["process_passed_count"], 2)
 
+    def test_branch_routing_readiness_grades_local_route_and_ospf_state(self):
+        device = DeviceState()
+        lab = get_lab("branch-routing-readiness")
+        self.assertFalse(grade_lab(device, lab)["passed"])
+
+        device.ip_routing = True
+        device.static_routes.append(StaticRoute("0.0.0.0/0", "192.0.2.1"))
+        device.ospf_processes[100] = OspfProcess(
+            100,
+            router_id="10.255.0.1",
+            networks=[("10.0.0.0/8", "0.0.0.0")],
+        )
+        grade = grade_lab(device, lab, ["show ip route", "show ip ospf", "show ip ospf neighbor"])
+        self.assertTrue(grade["passed"])
+        self.assertEqual(grade["process_passed_count"], 3)
+
 
 if __name__ == "__main__":
     unittest.main()

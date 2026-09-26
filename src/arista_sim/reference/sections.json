@@ -357,7 +357,7 @@
       {
         "title": "3. Dynamic routing: RIP and OSPF",
         "description": "Know RIP's distance-vector behavior and loop prevention, then focus on OSPF areas, neighbor and adjacency states, network types, DR/BDR, costs, and the verification sequence.",
-        "labs": ["ospf-local-basics"],
+        "labs": ["ospf-local-basics", "branch-routing-readiness"],
         "checkpoints": [
           {"question": "Why can an OSPF neighbor show Two-Way and still be healthy?", "answer": "On a broadcast network, DROTHER routers commonly remain Two-Way with one another while each forms a Full adjacency with the DR and BDR. Interpret the state in the context of the network type and role."},
           {"question": "What is the practical order for OSPF troubleshooting?", "answer": "Verify physical and Layer 3 interface state, OSPF participation, neighbor state, matching interface parameters, learned routes, reachability to the neighbor and remote destination, then the return path."}
