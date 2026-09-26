@@ -477,6 +477,9 @@ document.querySelector("#check-work").addEventListener("click", async () => {
       item.textContent = `${result.passed ? "✓" : "○"} ${result.label}`;
       return item;
     }));
+    const review = document.querySelector("#troubleshooting-review");
+    review.hidden = !grade.passed;
+    if (grade.passed) { const checks = grade.results.filter(item => item.passed).map(item => item.label).join("; "); const commands = state.history.filter(command => command.trim()).slice(-18).join("\n") || "No command history retained."; review.replaceChildren(Object.assign(document.createElement("h4"), {textContent:"Troubleshooting path review"}), Object.assign(document.createElement("p"), {textContent:`Fault isolation: the verified state checks now pass (${checks}). Root cause: the lab's required configuration state was incomplete or incorrect before repair.`}), Object.assign(document.createElement("p"), {textContent:"Recommended path: confirm the symptom, inspect topology and current state, make the smallest change, then verify the affected service and preserved traffic."}), Object.assign(document.createElement("code"), {textContent:commands})); }
     if (grade.process) appendLine(`Troubleshooting evidence: ${grade.process_passed_count} / ${grade.process_total_count}`, "welcome");
   } catch (error) {
     appendLine(error.message, "error-line");

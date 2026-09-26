@@ -251,7 +251,7 @@ class LabApplication:
         grade = browser_session.campus.grade() if browser_session.campus else grade_lab(browser_session.cli.device, get_lab(browser_session.lab_id), browser_session.cli.history)
         if self.sessions.database:
             lab = get_lab(browser_session.lab_id)
-            complete = bool(grade.get("complete"))
+            complete = bool(grade.get("passed"))
             self.sessions.database.record_activity("lab", lab["title"], "completed" if complete else "requirements still open", 100 if complete else 0)
         return grade
 

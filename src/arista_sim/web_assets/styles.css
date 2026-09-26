@@ -246,6 +246,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .grade-panel { margin-top: 22px; padding: 16px; border: 1px solid var(--line); border-radius: 11px; background: rgba(5, 13, 17, 0.5); }
 .grade-panel.complete { border-color: rgba(115, 220, 155, 0.5); background: rgba(115, 220, 155, 0.07); }
 .grade-panel h3 { margin-bottom: 10px; font-size: 0.92rem; }
+.troubleshooting-review { margin-top:16px; padding-top:14px; border-top:1px solid var(--line); color:var(--muted); font-size:.8rem; line-height:1.5; } .troubleshooting-review h4 { margin:0 0 8px; color:var(--cyan); font-size:.85rem; } .troubleshooting-review p { margin:7px 0; } .troubleshooting-review code { display:block; max-height:120px; overflow:auto; padding:8px; color:#cfe3ed; background:#081218; font: .75rem/1.5 var(--mono); white-space:pre-wrap; }
 .grade-panel ul { list-style: none; margin: 0; padding: 0; }
 .grade-panel li { display: flex; gap: 8px; margin: 8px 0; color: var(--muted); font-size: 0.83rem; }
 .grade-panel li.pass { color: var(--green); }
