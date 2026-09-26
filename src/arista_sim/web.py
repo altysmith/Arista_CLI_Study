@@ -16,6 +16,7 @@ from urllib.parse import parse_qs, urlparse
 
 from .cli.session import Session
 from .labs import get_lab, grade_lab, load_labs, load_sections, public_lab
+from .post_lab_review import post_lab_review
 from .reference import load_command_reference
 from .persistence import ProgressDatabase, dump_cli, restore_cli
 from .campus import Campus, RoutedCampus
@@ -248,9 +249,11 @@ class LabApplication:
 
     def grade(self, session_id: str) -> dict[str, Any]:
         browser_session = self.sessions.get(session_id)
-        grade = browser_session.campus.grade() if browser_session.campus else grade_lab(browser_session.cli.device, get_lab(browser_session.lab_id), browser_session.cli.history)
+        lab = get_lab(browser_session.lab_id)
+        grade = browser_session.campus.grade() if browser_session.campus else grade_lab(browser_session.cli.device, lab, browser_session.cli.history)
+        if grade.get("passed"):
+            grade["review"] = post_lab_review(lab)
         if self.sessions.database:
-            lab = get_lab(browser_session.lab_id)
             complete = bool(grade.get("passed"))
             self.sessions.database.record_activity("lab", lab["title"], "completed" if complete else "requirements still open", 100 if complete else 0)
         return grade
