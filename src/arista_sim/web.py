@@ -57,7 +57,7 @@ class SessionStore:
     def _new(self, lab):
         if lab.get("campus_fault"):
             fault = lab["campus_fault"]
-            campus = RoutedCampus("static" if fault == "routing" else fault) if fault in ("routing", "next-hop", "ospf-area", "ospf-route", "ospf-link", "ospf-specificity") else Campus(fault)
+            campus = RoutedCampus("static" if fault == "routing" else fault) if fault in ("routing", "next-hop", "ospf-area", "ospf-route", "ospf-link", "ospf-specificity", "ospf-source") else Campus(fault)
             active = next(iter(campus.sessions))
             return BrowserSession(campus.sessions[active], lab["id"], campus, active)
         return BrowserSession(self._starting_session(lab), lab["id"])

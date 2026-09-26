@@ -69,6 +69,16 @@ class CampusTests(unittest.TestCase):
         self.assertIn("O        10.20.20.0/24", route_table)
         self.assertTrue(campus.ping("SITE-A", "SITE-B")["success"])
 
+    def test_static_route_wins_when_the_prefix_length_ties(self):
+        campus = RoutedCampus("ospf-source")
+        self.assertFalse(campus.ping("SITE-A", "SITE-B")["success"])
+        edge_a = campus.sessions["EDGE-A"]
+        self.assertIn("S        10.20.20.0/24", edge_a.execute("show ip route"))
+        for command in ["enable", "configure terminal", "no ip route 10.20.20.0/24 192.0.2.6", "end"]:
+            self.assertFalse(edge_a.execute(command).startswith("%"))
+        self.assertTrue(campus.ping("SITE-A", "SITE-B")["success"])
+        self.assertTrue(campus.grade()["passed"])
+
     def test_routed_campus_ticket_uses_the_browser_session_and_resumes(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "progress.sqlite3"
