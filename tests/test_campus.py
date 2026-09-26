@@ -71,6 +71,8 @@ class CampusTests(unittest.TestCase):
 
     def test_static_route_wins_when_the_prefix_length_ties(self):
         campus = RoutedCampus("ospf-source")
+        edge_a = next(device for device in campus.view()["devices"] if device["name"] == "EDGE-A")
+        self.assertIn({"destination": "10.20.20.10", "prefix": "10.20.20.0/24", "source": "static", "via": "192.0.2.6", "reason": "source preference after an equal-prefix tie"}, edge_a["decisions"])
         self.assertFalse(campus.ping("SITE-A", "SITE-B")["success"])
         edge_a = campus.sessions["EDGE-A"]
         self.assertIn("S        10.20.20.0/24", edge_a.execute("show ip route"))

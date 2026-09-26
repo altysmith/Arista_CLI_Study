@@ -391,6 +391,19 @@ class RoutedCampus:
         lines.extend(f" O        {route['prefix']} via OSPF path to {route['owner']}" for route in self.ospf_routes(node))
         return "\n".join(lines)
 
+    def route_decision(self, node, destination):
+        address = ip_address(destination)
+        device = self.sessions[node].device
+        static = [(ip_network(route.prefix, strict=False).prefixlen, 1, "static", route.prefix, route.next_hop) for route in device.static_routes if address in ip_network(route.prefix, strict=False)]
+        ospf = [(ip_network(route["prefix"], strict=False).prefixlen, 0, "OSPF", route["prefix"], route["owner"]) for route in self.ospf_routes(node) if address in ip_network(route["prefix"], strict=False)]
+        candidates = static + ospf
+        if not candidates:
+            return None
+        prefix, priority, source, network, via = max(candidates, key=lambda item: (item[0], item[1]))
+        same_prefix = [item for item in candidates if item[0] == prefix]
+        reason = "source preference after an equal-prefix tie" if len(same_prefix) > 1 else "longest matching prefix"
+        return {"destination": destination, "prefix": network, "source": source, "via": via, "reason": reason}
+
     def port(self, node, port):
         return self.sessions[node].device.interfaces[port]
 
@@ -521,5 +534,6 @@ class RoutedCampus:
             interfaces = [{"name": port.name, "addresses": list(port.ipv4_addresses), "up": port.admin_up}
                           for port in device.interfaces.values() if port.ipv4_addresses]
             routes = [{"prefix": route.prefix, "next_hop": route.next_hop} for route in device.static_routes]
-            devices.append({"name": name, "interfaces": interfaces, "routes": routes})
+            decisions = [decision for host, (_, _, address, *_ ) in ROUTED_HOSTS.items() if (decision := self.route_decision(name, str(ip_interface(address).ip)))]
+            devices.append({"name": name, "interfaces": interfaces, "routes": routes, "decisions": decisions})
         return {"title": "Three-router static-routing path", "subtitle": "Fictional routed topology · static IPv4 only", "limits": "The simulator evaluates directly connected and static IPv4 routes plus return paths. It does not model OSPF adjacency or route exchange, ARP on routers, ACL enforcement, packet loss, or timing.", "switches": list(ROUTED_SWITCHES), "links": [{"a": a, "ap": ap, "b": b, "bp": bp, "up": self.link_up(a, ap, b, bp)} for a, ap, b, bp in ROUTED_LINKS], "hosts": [{"id": name, "switch": node, "port": port, "address": address, "mac": mac, "arp": self.arp[name]} for name, (node, port, address, gateway, mac) in ROUTED_HOSTS.items()], "devices": devices}

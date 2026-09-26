@@ -435,7 +435,9 @@ function renderCampus(campus, active) {
       interfaces.textContent = `Interfaces: ${device.interfaces.map(item => `${item.name.replace("Ethernet", "Et")} ${item.addresses.join(", ")} (${item.up ? "up" : "down"})`).join(" · ") || "none"}`;
       const routes = document.createElement("p");
       routes.textContent = `Static routes: ${device.routes.map(route => `${route.prefix} via ${route.next_hop}`).join(" · ") || "none"}`;
-      card.replaceChildren(heading, interfaces, routes);
+      const decisions = document.createElement("p");
+      decisions.textContent = `Selected: ${device.decisions.map(route => `${route.destination} → ${route.source} ${route.prefix} (${route.reason})`).join(" · ") || "no remote route"}`;
+      card.replaceChildren(heading, interfaces, routes, decisions);
       return card;
     }));
   }
