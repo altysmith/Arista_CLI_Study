@@ -286,6 +286,9 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .exercise-meta, .exercise-result { color: var(--muted); font-size: .82rem; }
 .exercise-prompt { margin: 16px 0; color: var(--text); font-size: 1.02rem; line-height: 1.55; }
 .exercise-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+.practice-picker { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin: 14px 0; }
+.practice-picker label { grid-column: 1 / -1; color: var(--muted); font-size: .72rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.practice-picker select { min-width: 0; min-height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--text); background: #091419; }
 .exercise-form label { grid-column: 1 / -1; color: var(--muted); font-size: .72rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
 .exercise-form input { min-width: 0; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 9px; color: var(--text); background: #091419; }
 .exercise-result { min-height: 1.5em; margin: 16px 0 0; line-height: 1.5; }
@@ -293,3 +296,4 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .exercise-result.incorrect { color: var(--amber); }
 @media (max-width: 900px) { .study-browser { order: -2; } }
 @media (max-width: 560px) { .exercise-form { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .practice-picker { grid-template-columns: 1fr; } }

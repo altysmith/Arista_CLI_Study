@@ -12,7 +12,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib.resources import files
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from .cli.session import Session
 from .labs import get_lab, grade_lab, load_labs, load_sections, public_lab
@@ -20,7 +20,7 @@ from .reference import load_command_reference
 from .persistence import ProgressDatabase, dump_cli, restore_cli
 from .campus import Campus
 from .curriculum import load_curriculum
-from .exercises import choose_study_now, evaluate_attempt
+from .exercises import choose_study_now, evaluate_attempt, exercise_choices
 
 
 MAX_REQUEST_BYTES = 64 * 1024
@@ -123,12 +123,17 @@ class LabApplication:
     def curriculum(self) -> dict[str, Any]:
         return load_curriculum()
 
-    def study_now(self) -> dict[str, Any]:
+    def study_now(self, topic_id=None, mode=None) -> dict[str, Any]:
         progress = self.sessions.database.skill_progress() if self.sessions.database else []
-        return choose_study_now(progress)
+        return choose_study_now(progress, topic_id=topic_id, mode=mode)
 
     def progress(self) -> dict[str, Any]:
-        return {"skills": self.sessions.database.skill_progress() if self.sessions.database else []}
+        if not self.sessions.database:
+            return {"skills": [], "recent_mistakes": []}
+        return {"skills": self.sessions.database.skill_progress(), "recent_mistakes": self.sessions.database.recent_mistakes()}
+
+    def exercises(self) -> dict[str, Any]:
+        return {"exercises": exercise_choices()}
 
     def submit_attempt(self, exercise_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         if not self.sessions.database:
@@ -230,7 +235,8 @@ class LabRequestHandler(BaseHTTPRequestHandler):
         return self.server.app  # type: ignore[attr-defined]
 
     def do_GET(self) -> None:
-        path = urlparse(self.path).path
+        request_url = urlparse(self.path)
+        path = request_url.path
         if path == "/api/labs":
             self._send_json(self.app.labs())
             return
@@ -241,10 +247,14 @@ class LabRequestHandler(BaseHTTPRequestHandler):
             self._send_json(self.app.curriculum())
             return
         if path == "/api/study-now":
-            self._send_json(self.app.study_now())
+            query = parse_qs(request_url.query)
+            self._send_json(self.app.study_now(query.get("topic_id", [None])[0], query.get("mode", [None])[0]))
             return
         if path == "/api/progress":
             self._send_json(self.app.progress())
+            return
+        if path == "/api/exercises":
+            self._send_json(self.app.exercises())
             return
         self._send_asset("index.html" if path == "/" else path.removeprefix("/"))
 

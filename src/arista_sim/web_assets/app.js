@@ -8,6 +8,7 @@ const state = {
   sections: [],
   labId: null,
   reference: null,
+  exerciseChoices: [],
   exercise: null,
   hintsUsed: 0,
   busy: false,
@@ -132,11 +133,13 @@ async function startSession(labId) {
 
 async function initialize() {
   try {
-    const [catalog, reference, exercise] = await Promise.all([api("/api/labs"), api("/api/reference"), api("/api/study-now")]);
+    const [catalog, reference, exercise, exercises] = await Promise.all([api("/api/labs"), api("/api/reference"), api("/api/study-now"), api("/api/exercises")]);
     state.labs = catalog.labs;
     state.sections = catalog.sections || [];
     initializeSections();
     state.reference = reference;
+    state.exerciseChoices = exercises.exercises;
+    document.querySelector("#practice-choice").replaceChildren(...state.exerciseChoices.map(choice => new Option(`${choice.title} · ${choice.mode}`, choice.id)));
     renderExercise(exercise);
     labSelect.replaceChildren(...state.labs.map((lab) => {
       const option = document.createElement("option");
@@ -308,6 +311,15 @@ document.querySelector("#exercise-form").addEventListener("submit", async event 
     result.textContent = error.message;
     button.disabled = false;
   }
+});
+
+document.querySelector("#practice-picker").addEventListener("submit", async event => {
+  event.preventDefault();
+  const choice = state.exerciseChoices.find(item => item.id === document.querySelector("#practice-choice").value);
+  if (!choice) return;
+  try {
+    renderExercise(await api(`/api/study-now?topic_id=${encodeURIComponent(choice.topic_id)}&mode=${encodeURIComponent(choice.mode)}`));
+  } catch (error) { document.querySelector("#exercise-result").textContent = error.message; }
 });
 
 document.querySelector("#clear-terminal").addEventListener("click", () => {

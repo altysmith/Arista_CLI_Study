@@ -69,6 +69,15 @@ class WebTests(unittest.TestCase):
         ]
         self.assertIn("show interfaces trunk", commands)
 
+        status, _, body = self.request("/api/exercises")
+        choices = json.loads(body)["exercises"]
+        self.assertEqual(status, 200)
+        self.assertIn("arp-next-hop", [choice["id"] for choice in choices])
+
+        status, _, body = self.request("/api/study-now?topic_id=ipv4-local-delivery&mode=analyze")
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body)["id"], "subnet-local-or-remote")
+
         status, _, body = self.request("/api/curriculum")
         curriculum = json.loads(body)
         self.assertEqual(status, 200)

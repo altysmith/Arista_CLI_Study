@@ -102,6 +102,11 @@ class ProgressDatabase:
         keys = ("topic_id", "mode", "mastery", "attempts", "correct_attempts", "recent_error_rate", "last_practiced_at")
         return [dict(zip(keys, row)) for row in rows]
 
+    def recent_mistakes(self, limit=8):
+        with self.connect() as db:
+            rows = db.execute("SELECT exercise_id,topic_id,mode,error_tags,practiced FROM exercise_attempts WHERE correct=0 ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+        return [{"exercise_id": row[0], "topic_id": row[1], "mode": row[2], "error_tags": json.loads(row[3]), "practiced_at": row[4]} for row in rows]
+
     def record_attempt(self, exercise_id, topic_id, mode, correct, hints_used, error_tags):
         with self.connect() as db:
             db.execute("INSERT INTO exercise_attempts(exercise_id,topic_id,mode,correct,hints_used,error_tags) VALUES(?,?,?,?,?,?)", (exercise_id, topic_id, mode, int(correct), hints_used, json.dumps(error_tags)))

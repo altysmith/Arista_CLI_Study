@@ -19,6 +19,10 @@ def load_exercise_families() -> list[dict[str, Any]]:
     return families
 
 
+def exercise_choices() -> list[dict[str, str]]:
+    return [{"id": family["id"], "title": family["title"], "topic_id": family["topic_id"], "mode": family["mode"]} for family in load_exercise_families()]
+
+
 def validate_exercise_families(families: list[dict[str, Any]]) -> None:
     if not isinstance(families, list) or not families:
         raise ValueError("Exercise families must be a non-empty list")
@@ -58,7 +62,7 @@ def public_exercise(family: dict[str, Any], variant: dict[str, Any], reason: str
     }
 
 
-def choose_study_now(progress: list[dict[str, Any]], now: datetime | None = None) -> dict[str, Any]:
+def choose_study_now(progress: list[dict[str, Any]], now: datetime | None = None, topic_id: str | None = None, mode: str | None = None) -> dict[str, Any]:
     """Choose deterministically so the learner can understand and test the recommendation."""
     now = now or datetime.now(timezone.utc)
     progress_by_skill = {(item["topic_id"], item["mode"]): item for item in progress}
@@ -69,6 +73,10 @@ def choose_study_now(progress: list[dict[str, Any]], now: datetime | None = None
             dependents[prerequisite].append(topic["id"])
     ranked: list[tuple[float, dict[str, Any], str, dict[str, float]]] = []
     for family in load_exercise_families():
+        if topic_id and family["topic_id"] != topic_id:
+            continue
+        if mode and family["mode"] != mode:
+            continue
         skill = progress_by_skill.get((family["topic_id"], family["mode"]))
         mastery = float(skill["mastery"]) if skill else 0.0
         error_rate = float(skill["recent_error_rate"]) if skill else 0.0
@@ -83,6 +91,8 @@ def choose_study_now(progress: list[dict[str, Any]], now: datetime | None = None
         if recency > 1: reason += "; due for review"
         if dependent_need: reason += "; supports a weak dependent topic"
         ranked.append((score, family, reason, factors))
+    if not ranked:
+        raise ValueError("No practice family matches that topic and mode")
     _, family, reason, factors = max(ranked, key=lambda item: (item[0], item[1]["id"]))
     return public_exercise(family, family["variants"][0], reason, factors)
 

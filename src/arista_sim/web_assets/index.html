@@ -31,6 +31,7 @@
       </section>
       <section class="study-session" aria-labelledby="study-now-title">
         <div class="section-heading"><h2 id="study-now-title">Study Now</h2><span id="study-reason"></span></div>
+        <form id="practice-picker" class="practice-picker"><label for="practice-choice">Practice a specific skill</label><select id="practice-choice"></select><button class="secondary-button" type="submit">Load practice</button></form>
         <p id="exercise-mode" class="exercise-meta"></p>
         <p id="exercise-prompt" class="exercise-prompt">Loading a focused practice question…</p>
         <form id="exercise-form" class="exercise-form">
@@ -40,6 +41,7 @@
         </form>
         <details id="exercise-hints" class="hints"><summary>Need a hint?</summary><ol id="exercise-hint-list"></ol></details>
         <p id="exercise-result" class="exercise-result" role="status"></p>
+        <div id="mistake-review" class="mistake-review" hidden></div>
       </section>
       <section id="campus-panel" class="campus-panel" aria-label="Campus topology" hidden>
         <div class="section-heading"><h2>College access network</h2><span>Fictional campus · Layer 2</span></div>
