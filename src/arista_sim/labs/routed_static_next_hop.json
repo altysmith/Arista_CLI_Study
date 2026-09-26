@@ -1,0 +1,12 @@
+{
+  "id": "routed-static-next-hop-ticket",
+  "title": "Routed campus ticket: unreachable next hop",
+  "summary": "Repair an invalid static-route next hop without disturbing the return path.",
+  "difficulty": "Campus · Layer 3 break/fix",
+  "estimated_minutes": 18,
+  "brief": "SITE-A cannot reach SITE-B in a fictional three-router campus. All required destination and return prefixes are configured, but EDGE-A points its remote route at an address that is not a reachable router neighbor. Use the router consoles, LLDP, route tables, and host ping to identify and correct the next hop. This topology evaluates directly connected and static IPv4 forwarding only; it does not model OSPF adjacency or route exchange.",
+  "objectives": ["Identify the unreachable static next hop", "Repair EDGE-A's route to the SITE-B subnet", "Verify end-to-end IPv4 reachability without changing the return route"],
+  "hints": ["Read the selected route, then verify whether its next hop exists on the adjacent routed link.", "LLDP identifies EDGE-A's actual neighbor; compare its interface addressing.", "Remove the incorrect route before adding the same prefix with the correct next hop."],
+  "campus_fault": "next-hop",
+  "checks": []
+}

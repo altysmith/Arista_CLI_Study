@@ -18,6 +18,16 @@ class CampusTests(unittest.TestCase):
         self.assertTrue(campus.grade()["passed"])
         self.assertEqual(campus.grade()["process_passed_count"], 3)
 
+    def test_routed_campus_rejects_an_unreachable_next_hop_until_repaired(self):
+        campus = RoutedCampus("next-hop")
+        self.assertFalse(campus.ping("SITE-A", "SITE-B")["success"])
+        self.assertIn("next hop is not directly reachable", campus.ping("SITE-A", "SITE-B")["output"])
+        edge_a = campus.sessions["EDGE-A"]
+        for command in ["enable", "show lldp neighbors", "show ip route", "configure terminal", "no ip route 10.20.20.0/24 192.0.2.6", "ip route 10.20.20.0/24 192.0.2.2", "end"]:
+            self.assertFalse(edge_a.execute(command).startswith("%"))
+        self.assertTrue(campus.ping("SITE-A", "SITE-B")["success"])
+        self.assertTrue(campus.grade()["passed"])
+
     def test_routed_campus_ticket_uses_the_browser_session_and_resumes(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "progress.sqlite3"

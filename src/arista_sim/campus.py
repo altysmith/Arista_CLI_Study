@@ -213,7 +213,7 @@ class RoutedCampusSession(Session):
 class RoutedCampus:
     """A fixed three-router topology that evaluates static IPv4 forwarding and return paths only."""
     def __init__(self, fault="static"):
-        if fault != "static":
+        if fault not in ("static", "next-hop"):
             raise ValueError("Unknown routed campus fault")
         self.fault = fault
         self.sessions = {name: RoutedCampusSession(self, name) for name in ROUTED_SWITCHES}
@@ -237,9 +237,9 @@ class RoutedCampus:
             "EDGE-B": (("Ethernet1", "198.51.100.2/30"), ("Ethernet2", "10.20.20.1/24")),
         }
         routes = {
-            "EDGE-A": (("10.20.20.0/24", "192.0.2.2"),),
+            "EDGE-A": (("10.20.20.0/24", "192.0.2.6" if self.fault == "next-hop" else "192.0.2.2"),),
             "CORE-1": (("10.10.10.0/24", "192.0.2.1"), ("10.20.20.0/24", "198.51.100.2")),
-            "EDGE-B": (),
+            "EDGE-B": (("10.10.10.0/24", "198.51.100.1"),) if self.fault == "next-hop" else (),
         }
         for node in ROUTED_SWITCHES:
             commands = ["enable", "configure terminal", f"hostname {node}", "ip routing"]
@@ -330,8 +330,14 @@ class RoutedCampus:
     def grade(self):
         success = self.ping("SITE-A", "SITE-B", False)["success"]
         histories = [command.casefold() for cli in self.sessions.values() for command in cli.history]
+        if self.fault == "next-hop":
+            repair = any(route.prefix == "10.20.20.0/24" and route.next_hop == "192.0.2.2" for route in self.sessions["EDGE-A"].device.static_routes)
+            repair_label = "EDGE-A uses the reachable CORE-1 next hop"
+        else:
+            repair = any(route.prefix == "10.10.10.0/24" and route.next_hop == "198.51.100.1" for route in self.sessions["EDGE-B"].device.static_routes)
+            repair_label = "SITE-B has a return route to SITE-A"
         results = [{"label": "SITE-A reaches SITE-B through the routed path", "passed": success},
-                   {"label": "SITE-B has a return route to SITE-A", "passed": any(route.prefix == "10.10.10.0/24" and route.next_hop == "198.51.100.1" for route in self.sessions["EDGE-B"].device.static_routes)}]
+                   {"label": repair_label, "passed": repair}]
         process = [{"label": "Tested end-to-end host connectivity", "passed": "host_ping" in self.evidence},
                    {"label": "Inspected a routing table", "passed": any(command.startswith("show ip route") for command in histories)},
                    {"label": "Mapped a routed link with LLDP", "passed": any(command.startswith("show lldp") for command in histories)}]

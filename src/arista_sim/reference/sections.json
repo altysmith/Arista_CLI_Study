@@ -348,7 +348,7 @@
       {
         "title": "2. Static routing and return paths",
         "description": "Configure and verify next-hop, exit-interface, and default routes; then diagnose missing routes, wrong next hops, and missing return routing.",
-        "labs": ["static-default-route", "routed-static-return-ticket"],
+        "labs": ["static-default-route", "routed-static-return-ticket", "routed-static-next-hop-ticket"],
         "checkpoints": [
           {"question": "Why is a route on the forward device not sufficient for end-to-end reachability?", "answer": "The return path must also exist. A successful forward lookup cannot help if the reply has no route back to the original source."},
           {"question": "What should a static-route troubleshooting workflow verify?", "answer": "Verify the destination prefix and mask, selected next hop or exit interface, reachability of that next hop, the installed route, a test to the destination, and the return route."}
