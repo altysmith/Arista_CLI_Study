@@ -280,4 +280,16 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .study-checkpoint summary { cursor: pointer; color: var(--amber); line-height: 1.5; }
 .study-sources a { display: inline-block; color: var(--cyan); margin-right: 14px; }
 .study-note { font-size: .8rem; }
+.study-session { grid-column: 1 / -1; padding: 22px 24px; border: 1px solid rgba(70, 214, 208, .28); border-radius: 16px; background: linear-gradient(120deg, rgba(70, 214, 208, .10), var(--panel)); }
+.study-session .section-heading { margin-top: 0; }
+.study-session h2 { margin: 0; }
+.exercise-meta, .exercise-result { color: var(--muted); font-size: .82rem; }
+.exercise-prompt { margin: 16px 0; color: var(--text); font-size: 1.02rem; line-height: 1.55; }
+.exercise-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+.exercise-form label { grid-column: 1 / -1; color: var(--muted); font-size: .72rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.exercise-form input { min-width: 0; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 9px; color: var(--text); background: #091419; }
+.exercise-result { min-height: 1.5em; margin: 16px 0 0; line-height: 1.5; }
+.exercise-result.correct { color: var(--green); }
+.exercise-result.incorrect { color: var(--amber); }
 @media (max-width: 900px) { .study-browser { order: -2; } }
+@media (max-width: 560px) { .exercise-form { grid-template-columns: 1fr; } }

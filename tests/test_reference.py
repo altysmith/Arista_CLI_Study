@@ -1,5 +1,7 @@
 import unittest
 
+from arista_sim.curriculum import SkillMastery, TrainingMode, load_curriculum, validate_curriculum
+from arista_sim.exercises import choose_study_now, evaluate_attempt, load_exercise_families
 from arista_sim.reference import load_command_reference
 
 
@@ -27,6 +29,35 @@ class CommandReferenceTests(unittest.TestCase):
             for item in category["commands"]:
                 self.assertTrue(item["command"])
                 self.assertTrue(item["description"])
+
+    def test_curriculum_has_five_source_sections_and_valid_dependencies(self):
+        curriculum = load_curriculum()
+        self.assertEqual(curriculum["version"], 1)
+        self.assertEqual(len(curriculum["sections"]), 5)
+        topic_ids = {
+            topic["id"]
+            for section in curriculum["sections"]
+            for domain in section["domains"]
+            for topic in domain["topics"]
+        }
+        self.assertIn("ospf-workflow", topic_ids)
+        self.assertIn("acl-workflow", topic_ids)
+        self.assertEqual(set(TrainingMode), {TrainingMode.LEARN, TrainingMode.RECALL, TrainingMode.ANALYZE, TrainingMode.CONFIGURE, TrainingMode.VERIFY, TrainingMode.TROUBLESHOOT})
+        self.assertEqual(SkillMastery("ospf-workflow", TrainingMode.TROUBLESHOOT).mastery, 0.0)
+
+    def test_curriculum_rejects_unknown_prerequisite(self):
+        curriculum = load_curriculum()
+        curriculum["sections"][0]["domains"][0]["topics"][0]["prerequisites"] = ["missing-topic"]
+        with self.assertRaisesRegex(ValueError, "Unknown prerequisite"):
+            validate_curriculum(curriculum)
+
+    def test_exercise_families_evaluate_and_select_deterministically(self):
+        self.assertEqual(len(load_exercise_families()), 6)
+        selected = choose_study_now([])
+        self.assertEqual(selected["id"], "vlan-trunk-mismatch")
+        self.assertNotIn("answer", selected)
+        result = evaluate_attempt("arp-next-hop", "remote-server", "10.10.10.1")
+        self.assertTrue(result["correct"])
 
 
 if __name__ == "__main__":

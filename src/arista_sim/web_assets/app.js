@@ -8,6 +8,8 @@ const state = {
   sections: [],
   labId: null,
   reference: null,
+  exercise: null,
+  hintsUsed: 0,
   busy: false,
 };
 
@@ -130,11 +132,12 @@ async function startSession(labId) {
 
 async function initialize() {
   try {
-    const [catalog, reference] = await Promise.all([api("/api/labs"), api("/api/reference")]);
+    const [catalog, reference, exercise] = await Promise.all([api("/api/labs"), api("/api/reference"), api("/api/study-now")]);
     state.labs = catalog.labs;
     state.sections = catalog.sections || [];
     initializeSections();
     state.reference = reference;
+    renderExercise(exercise);
     labSelect.replaceChildren(...state.labs.map((lab) => {
       const option = document.createElement("option");
       option.value = lab.id;
@@ -280,6 +283,33 @@ input.addEventListener("keydown", async (event) => {
   }
 });
 
+document.querySelector("#exercise-hints").addEventListener("toggle", event => {
+  if (event.currentTarget.open) state.hintsUsed = Math.max(1, state.hintsUsed);
+});
+
+document.querySelector("#exercise-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!state.exercise) return;
+  const button = document.querySelector("#exercise-submit");
+  button.disabled = true;
+  const result = document.querySelector("#exercise-result");
+  try {
+    const answer = document.querySelector("#exercise-answer").value;
+    const attempt = await api(`/api/exercises/${state.exercise.id}/attempts`, {
+      method: "POST",
+      body: JSON.stringify({variant_id: state.exercise.variant_id, answer, hints_used: state.hintsUsed}),
+    });
+    result.className = `exercise-result ${attempt.correct ? "correct" : "incorrect"}`;
+    result.textContent = `${attempt.correct ? "Correct." : "Not quite."} ${attempt.explanation} Mastery: ${attempt.progress.mastery}% (${attempt.progress.attempts} attempt${attempt.progress.attempts === 1 ? "" : "s"}).`;
+    const next = await api("/api/study-now");
+    window.setTimeout(() => renderExercise(next), 900);
+  } catch (error) {
+    result.className = "exercise-result incorrect";
+    result.textContent = error.message;
+    button.disabled = false;
+  }
+});
+
 document.querySelector("#clear-terminal").addEventListener("click", () => {
   output.replaceChildren();
   input.focus();
@@ -366,6 +396,24 @@ function renderCampus(campus, active) {
     select.value = previous || (id === "ping-source" ? "STAFF-A" : "STAFF-B");
   }
   document.querySelector("#host-arp").textContent = campus.hosts.map(h => `${h.id}: ${Object.entries(h.arp).map(([ip, mac]) => `${ip} → ${mac}`).join(", ") || "No learned entries"}`).join("\n");
+}
+
+function renderExercise(exercise) {
+  state.exercise = exercise;
+  state.hintsUsed = 0;
+  document.querySelector("#study-reason").textContent = exercise.reason;
+  document.querySelector("#exercise-mode").textContent = `${exercise.mode} · ${exercise.topic_id}`;
+  document.querySelector("#exercise-prompt").textContent = exercise.prompt;
+  document.querySelector("#exercise-answer").value = "";
+  document.querySelector("#exercise-submit").disabled = false;
+  document.querySelector("#exercise-result").textContent = "";
+  const hints = document.querySelector("#exercise-hints");
+  hints.open = false;
+  document.querySelector("#exercise-hint-list").replaceChildren(...exercise.hints.map(hint => {
+    const item = document.createElement("li");
+    item.textContent = hint;
+    return item;
+  }));
 }
 
 document.querySelectorAll("[data-device]").forEach(button => button.addEventListener("click", async () => {

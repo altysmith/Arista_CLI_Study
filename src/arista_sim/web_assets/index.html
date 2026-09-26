@@ -29,6 +29,18 @@
         <p id="section-sources" class="study-sources"></p>
         <p class="study-note">Future PDF study packs can be organized into sections with several focused labs. Share your PDFs in the task when ready.</p>
       </section>
+      <section class="study-session" aria-labelledby="study-now-title">
+        <div class="section-heading"><h2 id="study-now-title">Study Now</h2><span id="study-reason"></span></div>
+        <p id="exercise-mode" class="exercise-meta"></p>
+        <p id="exercise-prompt" class="exercise-prompt">Loading a focused practice question…</p>
+        <form id="exercise-form" class="exercise-form">
+          <label for="exercise-answer">Your answer</label>
+          <input id="exercise-answer" type="text" autocomplete="off" required>
+          <button id="exercise-submit" class="primary-button" type="submit">Check answer</button>
+        </form>
+        <details id="exercise-hints" class="hints"><summary>Need a hint?</summary><ol id="exercise-hint-list"></ol></details>
+        <p id="exercise-result" class="exercise-result" role="status"></p>
+      </section>
       <section id="campus-panel" class="campus-panel" aria-label="Campus topology" hidden>
         <div class="section-heading"><h2>College access network</h2><span>Fictional campus · Layer 2</span></div>
         <div class="topology">

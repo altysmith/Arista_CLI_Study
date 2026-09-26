@@ -19,6 +19,8 @@ from .labs import get_lab, grade_lab, load_labs, load_sections, public_lab
 from .reference import load_command_reference
 from .persistence import ProgressDatabase, dump_cli, restore_cli
 from .campus import Campus
+from .curriculum import load_curriculum
+from .exercises import choose_study_now, evaluate_attempt
 
 
 MAX_REQUEST_BYTES = 64 * 1024
@@ -118,6 +120,25 @@ class LabApplication:
     def command_reference(self) -> dict[str, Any]:
         return load_command_reference()
 
+    def curriculum(self) -> dict[str, Any]:
+        return load_curriculum()
+
+    def study_now(self) -> dict[str, Any]:
+        progress = self.sessions.database.skill_progress() if self.sessions.database else []
+        return choose_study_now(progress)
+
+    def submit_attempt(self, exercise_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        if not self.sessions.database:
+            raise ValueError("Exercise progress requires durable storage")
+        variant_id = payload.get("variant_id")
+        answer = payload.get("answer")
+        hints_used = payload.get("hints_used", 0)
+        if not isinstance(variant_id, str) or not isinstance(answer, str) or not isinstance(hints_used, int) or hints_used < 0:
+            raise ValueError("Invalid exercise attempt")
+        result = evaluate_attempt(exercise_id, variant_id, answer)
+        progress = self.sessions.database.record_attempt(exercise_id, result["topic_id"], result["mode"], result["correct"], hints_used, result["error_tags"])
+        return {"correct": result["correct"], "explanation": result["explanation"], "error_tags": result["error_tags"], "progress": progress}
+
     def create_session(self, payload: dict[str, Any]) -> dict[str, Any]:
         labs = load_labs()
         lab_id = str(payload.get("lab_id") or labs[0]["id"])
@@ -213,6 +234,12 @@ class LabRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/reference":
             self._send_json(self.app.command_reference())
             return
+        if path == "/api/curriculum":
+            self._send_json(self.app.curriculum())
+            return
+        if path == "/api/study-now":
+            self._send_json(self.app.study_now())
+            return
         self._send_asset("index.html" if path == "/" else path.removeprefix("/"))
 
     def do_POST(self) -> None:
@@ -231,6 +258,12 @@ class LabRequestHandler(BaseHTTPRequestHandler):
             if path == "/api/sessions":
                 self._send_json(self.app.create_session(payload), HTTPStatus.CREATED)
                 return
+
+            if path.startswith("/api/exercises/") and path.endswith("/attempts"):
+                parts = path.strip("/").split("/")
+                if len(parts) == 4:
+                    self._send_json(self.app.submit_attempt(parts[2], payload))
+                    return
 
             parts = path.strip("/").split("/")
             if len(parts) == 4 and parts[:2] == ["api", "sessions"]:
