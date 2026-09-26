@@ -2,7 +2,7 @@ import unittest
 
 from arista_sim import DeviceState
 from arista_sim.labs import get_lab, grade_lab, load_labs, public_lab
-from arista_sim.models.device import StaticRoute
+from arista_sim.models.device import OspfProcess, StaticRoute
 
 
 class LabTests(unittest.TestCase):
@@ -55,6 +55,20 @@ class LabTests(unittest.TestCase):
         device.ip_routing = True
         device.static_routes.append(StaticRoute("0.0.0.0/0", "192.0.2.1"))
         grade = grade_lab(device, lab, ["show ip route"])
+        self.assertTrue(grade["passed"])
+        self.assertEqual(grade["process_passed_count"], 1)
+
+    def test_ospf_local_basics_grades_local_process_state(self):
+        device = DeviceState()
+        lab = get_lab("ospf-local-basics")
+        self.assertFalse(grade_lab(device, lab)["passed"])
+
+        device.ospf_processes[100] = OspfProcess(
+            100,
+            router_id="10.255.0.1",
+            networks=[("10.0.0.0/8", "0.0.0.0")],
+        )
+        grade = grade_lab(device, lab, ["show ip ospf"])
         self.assertTrue(grade["passed"])
         self.assertEqual(grade["process_passed_count"], 1)
 

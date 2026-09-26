@@ -82,6 +82,9 @@ def _grade_check(device: DeviceState, check: dict[str, Any]) -> dict[str, Any]:
         )
     elif check_type == "static_route":
         passed = any(route.prefix == check["prefix"] and route.next_hop == check["next_hop"] for route in device.static_routes)
+    elif check_type == "ospf_process":
+        process = device.ospf_processes.get(int(check["process_id"]))
+        passed = process is not None and process.router_id == check["router_id"] and (check["network"], check["area"]) in process.networks
     else:
         raise ValueError(f"Unsupported lab check type: {check_type}")
 
