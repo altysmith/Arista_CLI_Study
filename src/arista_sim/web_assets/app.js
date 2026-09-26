@@ -355,6 +355,9 @@ document.querySelector("#check-work").addEventListener("click", async () => {
     panel.hidden = false;
     panel.classList.toggle("complete", grade.passed);
     document.querySelector("#grade-title").textContent = grade.passed ? "Lab complete" : "Keep configuring";
+    const summary = document.querySelector("#grade-summary");
+    summary.hidden = !grade.passed;
+    if (grade.passed) summary.textContent = `Repair verified: ${grade.passed_count}/${grade.total_count} state checks passed${grade.process ? `; ${grade.process_passed_count}/${grade.process_total_count} troubleshooting evidence checks recorded.` : "."}`;
     document.querySelector("#progress-label").textContent = `${grade.passed_count} / ${grade.total_count}`;
     const results = document.querySelector("#grade-results");
     results.replaceChildren(...grade.results.map((result) => {
