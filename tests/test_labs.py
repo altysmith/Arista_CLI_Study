@@ -154,6 +154,18 @@ class LabTests(unittest.TestCase):
         self.assertTrue(grade["passed"])
         self.assertEqual(grade["process_passed_count"], 2)
 
+    def test_acl_wrong_direction_requires_inbound_only_attachment(self):
+        device = DeviceState()
+        lab = get_lab("acl-wrong-direction")
+        device.access_lists["MGMT-SAFE"] = AccessList("MGMT-SAFE", ["10 permit tcp 192.0.2.0/24 any eq ssh", "20 deny ip any any"])
+        device.interfaces["Ethernet1"].ip_access_groups["out"] = "MGMT-SAFE"
+        self.assertFalse(grade_lab(device, lab)["passed"])
+
+        device.interfaces["Ethernet1"].ip_access_groups = {"in": "MGMT-SAFE"}
+        grade = grade_lab(device, lab, ["show ip access-lists MGMT-SAFE", "show running-config"])
+        self.assertTrue(grade["passed"])
+        self.assertEqual(grade["process_passed_count"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()
