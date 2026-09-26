@@ -166,6 +166,15 @@ class LabTests(unittest.TestCase):
         self.assertTrue(grade["passed"])
         self.assertEqual(grade["process_passed_count"], 2)
 
+    def test_ospf_no_neighbor_diagnosis_requires_evidence_checks(self):
+        device = DeviceState()
+        lab = get_lab("ospf-no-neighbor-diagnosis")
+        device.ospf_processes[100] = OspfProcess(100, router_id="10.255.0.1", networks=[("10.0.0.0/8", "0.0.0.0")])
+        self.assertFalse(grade_lab(device, lab)["passed"])
+        grade = grade_lab(device, lab, ["show ip ospf", "show ip ospf interface brief", "show ip ospf neighbor"])
+        self.assertTrue(grade["passed"])
+        self.assertEqual(grade["process_passed_count"], 3)
+
 
 if __name__ == "__main__":
     unittest.main()
