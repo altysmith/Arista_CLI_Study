@@ -20,6 +20,8 @@ class CampusTests(unittest.TestCase):
 
     def test_routed_campus_rejects_an_unreachable_next_hop_until_repaired(self):
         campus = RoutedCampus("next-hop")
+        edge_a = next(device for device in campus.view()["devices"] if device["name"] == "EDGE-A")
+        self.assertIn({"prefix": "10.20.20.0/24", "next_hop": "192.0.2.6"}, edge_a["routes"])
         self.assertFalse(campus.ping("SITE-A", "SITE-B")["success"])
         self.assertIn("next hop is not directly reachable", campus.ping("SITE-A", "SITE-B")["output"])
         edge_a = campus.sessions["EDGE-A"]

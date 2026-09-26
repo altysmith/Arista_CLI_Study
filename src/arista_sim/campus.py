@@ -344,4 +344,11 @@ class RoutedCampus:
         return {"results": results, "passed": all(item["passed"] for item in results), "passed_count": sum(item["passed"] for item in results), "total_count": len(results), "process": process, "process_passed_count": sum(item["passed"] for item in process), "process_total_count": len(process)}
 
     def view(self):
-        return {"title": "Three-router static-routing path", "subtitle": "Fictional routed topology · static IPv4 only", "limits": "The simulator evaluates directly connected and static IPv4 routes plus return paths. It does not model OSPF adjacency or route exchange, ARP on routers, ACL enforcement, packet loss, or timing.", "switches": list(ROUTED_SWITCHES), "links": [{"a": a, "ap": ap, "b": b, "bp": bp, "up": self.link_up(a, ap, b, bp)} for a, ap, b, bp in ROUTED_LINKS], "hosts": [{"id": name, "switch": node, "port": port, "address": address, "mac": mac, "arp": self.arp[name]} for name, (node, port, address, gateway, mac) in ROUTED_HOSTS.items()]}
+        devices = []
+        for name in ROUTED_SWITCHES:
+            device = self.sessions[name].device
+            interfaces = [{"name": port.name, "addresses": list(port.ipv4_addresses), "up": port.admin_up}
+                          for port in device.interfaces.values() if port.ipv4_addresses]
+            routes = [{"prefix": route.prefix, "next_hop": route.next_hop} for route in device.static_routes]
+            devices.append({"name": name, "interfaces": interfaces, "routes": routes})
+        return {"title": "Three-router static-routing path", "subtitle": "Fictional routed topology · static IPv4 only", "limits": "The simulator evaluates directly connected and static IPv4 routes plus return paths. It does not model OSPF adjacency or route exchange, ARP on routers, ACL enforcement, packet loss, or timing.", "switches": list(ROUTED_SWITCHES), "links": [{"a": a, "ap": ap, "b": b, "bp": bp, "up": self.link_up(a, ap, b, bp)} for a, ap, b, bp in ROUTED_LINKS], "hosts": [{"id": name, "switch": node, "port": port, "address": address, "mac": mac, "arp": self.arp[name]} for name, (node, port, address, gateway, mac) in ROUTED_HOSTS.items()], "devices": devices}

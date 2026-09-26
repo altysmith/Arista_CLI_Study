@@ -423,6 +423,22 @@ function renderCampus(campus, active) {
     label.textContent = `${link.a} ${link.ap.replace("Ethernet", "Et")} ↔ ${link.b} ${link.bp.replace("Ethernet", "Et")} · ${link.up ? "up" : "down"}`;
     return label;
   }));
+  const evidence = document.querySelector("#routing-evidence");
+  evidence.hidden = !campus.devices;
+  if (campus.devices) {
+    document.querySelector("#routing-evidence-cards").replaceChildren(...campus.devices.map(device => {
+      const card = document.createElement("article");
+      card.className = "routing-evidence-card";
+      const heading = document.createElement("h4");
+      heading.textContent = device.name;
+      const interfaces = document.createElement("p");
+      interfaces.textContent = `Interfaces: ${device.interfaces.map(item => `${item.name.replace("Ethernet", "Et")} ${item.addresses.join(", ")} (${item.up ? "up" : "down"})`).join(" · ") || "none"}`;
+      const routes = document.createElement("p");
+      routes.textContent = `Static routes: ${device.routes.map(route => `${route.prefix} via ${route.next_hop}`).join(" · ") || "none"}`;
+      card.replaceChildren(heading, interfaces, routes);
+      return card;
+    }));
+  }
   const hosts = [...campus.hosts].sort((a,b) => a.port.localeCompare(b.port) || a.switch.localeCompare(b.switch));
   document.querySelector("#host-list").replaceChildren(...hosts.map(h => {
     const p = document.createElement("p");

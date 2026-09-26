@@ -30,12 +30,18 @@
 .uplinks { padding: 14px 0; color: var(--cyan); font-family: var(--mono); font-size: 14px; }
 .host-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin-top: 16px; }
 .host-list p { margin: 0; padding: 8px; border-left: 2px solid var(--line); }
+.routing-evidence { margin: 22px 0; border-top: 1px solid var(--line); padding-top: 18px; }
+.routing-evidence h3 { margin: 0 0 12px; font-size: 1rem; }
+.routing-evidence-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.routing-evidence-card { border: 1px solid var(--line); border-radius: 10px; background: var(--panel-raised); padding: 14px; min-width: 0; }
+.routing-evidence-card h4 { margin: 0 0 8px; color: var(--cyan); font: 600 14px var(--mono); }
+.routing-evidence-card p { margin: 7px 0 0; overflow-wrap: anywhere; }
 .ping-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin: 20px 0 12px; }
 .ping-controls label { display: grid; gap: 5px; font-size: 14px; }
 .ping-controls select { padding: 8px; color: var(--text); background: var(--panel-raised); border: 1px solid var(--line); border-radius: 6px; font: inherit; }
 #host-arp { overflow: auto; font-size: 14px; }
 button:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
-@media(max-width: 600px) { .campus-panel { padding: 16px; } .node { min-width: 0; padding: 10px 14px; } .host-list { gap: 8px; } }
+@media(max-width: 600px) { .campus-panel { padding: 16px; } .node { min-width: 0; padding: 10px 14px; } .host-list, .routing-evidence-cards { gap: 8px; } .routing-evidence-cards { grid-template-columns: 1fr; } }
 
 body {
   margin: 0;
