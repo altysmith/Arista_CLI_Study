@@ -135,8 +135,22 @@ class LabApplication:
 
     def progress(self) -> dict[str, Any]:
         if not self.sessions.database:
-            return {"skills": [], "recent_mistakes": [], "recent_activity": []}
-        return {"skills": self.sessions.database.skill_progress(), "recent_mistakes": self.sessions.database.recent_mistakes(), "recent_activity": self.sessions.database.recent_activity()}
+            return {"skills": [], "recent_mistakes": [], "recent_activity": [], "readiness": {"overall": None, "coverage": 0, "sections": {}}}
+        skills = self.sessions.database.skill_progress()
+        return {"skills": skills, "recent_mistakes": self.sessions.database.recent_mistakes(), "recent_activity": self.sessions.database.recent_activity(), "readiness": self._readiness(load_curriculum(), skills)}
+
+    @staticmethod
+    def _readiness(curriculum, skills):
+        weights = {"low": 1, "medium": 1.5, "high": 2, "very_high": 2.5}; recorded = {(x["topic_id"], x["mode"]): x for x in skills}; sections = {}; assessed_total = available_total = 0; score_total = weight_total = 0.0
+        for section in curriculum["sections"]:
+            assessed = available = 0; score = weight = 0.0
+            for domain in section["domains"]:
+                for topic in domain["topics"]:
+                    for mode in topic["modes"]:
+                        available += 1; item = recorded.get((topic["id"], mode)); w = weights[topic["priority"]]
+                        if item: assessed += 1; weight += w; score += w * float(item["mastery"])
+            assessed_total += assessed; available_total += available; score_total += score; weight_total += weight; sections[section["id"]] = {"mastery": round(score / weight) if weight else None, "coverage": round(100 * assessed / available) if available else 0, "assessed": assessed, "available": available}
+        return {"overall": round(score_total / weight_total) if weight_total else None, "coverage": round(100 * assessed_total / available_total) if available_total else 0, "sections": sections}
 
     def exercises(self) -> dict[str, Any]:
         return {"exercises": exercise_choices()}

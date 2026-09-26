@@ -225,12 +225,12 @@ function renderDashboard() {
   const skills = state.progress.skills || [];
   const byKey = new Map(skills.map(skill => [`${skill.topic_id}:${skill.mode}`, skill]));
   const dimensions = Object.keys(MODE_LABELS).map(mode => ({mode, value: average(skills.filter(skill => skill.mode === mode).map(skill => Number(skill.mastery)))}));
-  const overall = average(skills.map(skill => Number(skill.mastery)));
+  const overall = state.progress.readiness?.overall ?? average(skills.map(skill => Number(skill.mastery)));
   const assessed = skills.length;
   const ring = document.querySelector("#readiness-ring");
   ring.style.setProperty("--readiness", `${overall || 0}%`);
   document.querySelector("#readiness-value").textContent = overall === null ? "—" : `${overall}%`;
-  document.querySelector("#readiness-copy").textContent = overall === null ? "No mastery has been assessed yet. Start with a focused practice to establish a real baseline." : `${assessed} assessed skill${assessed === 1 ? "" : "s"}. Review the dimensions below so one score never hides a weakness.`;
+  document.querySelector("#readiness-copy").textContent = overall === null ? "No mastery has been assessed yet. Start with a focused practice to establish a real baseline." : `${state.progress.readiness?.coverage ?? 0}% of available skill modes assessed. Review the dimensions below so one score never hides a weakness.`;
   document.querySelector("#dashboard-reason").textContent = state.exercise?.reason || "Your next recommended practice";
 
   const dimensionList = document.querySelector("#dimension-list");
@@ -265,9 +265,9 @@ function renderDashboard() {
   const cards = document.querySelector("#curriculum-cards");
   cards.replaceChildren(...state.curriculum.sections.map((section, index) => {
     const topicIds = section.domains.flatMap(domain => domain.topics.map(topic => topic.id));
-    const values = skills.filter(skill => topicIds.includes(skill.topic_id)).map(skill => Number(skill.mastery)); const value = average(values);
+    const values = skills.filter(skill => topicIds.includes(skill.topic_id)).map(skill => Number(skill.mastery)); const readiness = state.progress.readiness?.sections?.[section.id]; const value = readiness?.mastery ?? average(values);
     const card = document.createElement("article"); card.className = "curriculum-card";
-    const number = document.createElement("b"); number.textContent = String(index + 1); const title = document.createElement("h3"); title.textContent = section.title.replace(/^L1 · /, ""); const description = document.createElement("p"); description.textContent = section.domains.map(domain => domain.title).slice(0, 3).join(" · "); const status = document.createElement("span"); status.textContent = value === null ? "Not yet assessed" : `${value}% assessed mastery`; const button = document.createElement("button"); button.type = "button"; button.textContent = "Continue →"; button.addEventListener("click", () => { state.selectedCurriculumSection = section.id; state.selectedTopic = null; renderCurriculumWorkspace(); showView("curriculum"); }); card.append(number, title, description, status, button); return card;
+    const number = document.createElement("b"); number.textContent = String(index + 1); const title = document.createElement("h3"); title.textContent = section.title.replace(/^L1 · /, ""); const description = document.createElement("p"); description.textContent = section.domains.map(domain => domain.title).slice(0, 3).join(" · "); const status = document.createElement("span"); status.textContent = value === null ? "Not yet assessed" : `${value}% mastery · ${readiness?.coverage ?? 0}% assessed`; const button = document.createElement("button"); button.type = "button"; button.textContent = "Continue →"; button.addEventListener("click", () => { state.selectedCurriculumSection = section.id; state.selectedTopic = null; renderCurriculumWorkspace(); showView("curriculum"); }); card.append(number, title, description, status, button); return card;
   }));
 }
 
