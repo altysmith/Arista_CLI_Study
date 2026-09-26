@@ -30,6 +30,16 @@ class CampusTests(unittest.TestCase):
         self.assertTrue(campus.ping("SITE-A", "SITE-B")["success"])
         self.assertTrue(campus.grade()["passed"])
 
+    def test_routed_campus_models_ospf_area_compatibility(self):
+        campus = RoutedCampus("ospf-area")
+        self.assertIn("FULL/-", campus.sessions["CORE-1"].execute("show ip ospf neighbor"))
+        self.assertIn("area mismatch", campus.sessions["EDGE-B"].execute("show ip ospf neighbor"))
+        edge_b = campus.sessions["EDGE-B"]
+        for command in ["enable", "show ip ospf interface brief", "configure terminal", "router ospf 1", "no network 198.51.100.0/30 area 1", "network 198.51.100.0/30 area 0", "end", "show ip ospf neighbor"]:
+            self.assertFalse(edge_b.execute(command).startswith("%"))
+        self.assertIn("FULL/-", edge_b.execute("show ip ospf neighbor"))
+        self.assertTrue(campus.grade()["passed"])
+
     def test_routed_campus_ticket_uses_the_browser_session_and_resumes(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "progress.sqlite3"

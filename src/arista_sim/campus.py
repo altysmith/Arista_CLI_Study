@@ -209,11 +209,17 @@ class RoutedCampusSession(Session):
             lines.append(f"{name:<13}{port.description[:20]:<22}{status:<15}{vlan}")
         return "\n".join(lines)
 
+    def _show_ospf_neighbors(self, _):
+        return self.campus.ospf_neighbor_output(self.node)
+
+    def _show_ospf_interfaces(self, _):
+        return self.campus.ospf_interface_output(self.node)
+
 
 class RoutedCampus:
     """A fixed three-router topology that evaluates static IPv4 forwarding and return paths only."""
     def __init__(self, fault="static"):
-        if fault not in ("static", "next-hop"):
+        if fault not in ("static", "next-hop", "ospf-area"):
             raise ValueError("Unknown routed campus fault")
         self.fault = fault
         self.sessions = {name: RoutedCampusSession(self, name) for name in ROUTED_SWITCHES}
@@ -247,8 +253,66 @@ class RoutedCampus:
                 commands += [f"interface {port}", "no switchport", f"ip address {address}", "no shutdown", "exit"]
             for prefix, next_hop in routes[node]:
                 commands.append(f"ip route {prefix} {next_hop}")
+            if self.fault == "ospf-area":
+                router_id = {"EDGE-A": "1.1.1.1", "CORE-1": "2.2.2.2", "EDGE-B": "3.3.3.3"}[node]
+                network = {"EDGE-A": "192.0.2.0/30", "CORE-1": "192.0.2.0/30", "EDGE-B": "198.51.100.0/30"}[node]
+                area = "1" if node == "EDGE-B" else "0"
+                if node == "CORE-1":
+                    commands += ["router ospf 1", f"router-id {router_id}", "network 192.0.2.0/30 area 0", "network 198.51.100.0/30 area 0", "exit"]
+                else:
+                    commands += ["router ospf 1", f"router-id {router_id}", f"network {network} area {area}", "exit"]
             commands += ["end", "copy running-config startup-config", "disable"]
             self._run(node, commands)
+
+    def _ospf_assignment(self, node, port):
+        for process in self.sessions[node].device.ospf_processes.values():
+            for network, area in process.networks:
+                if any(ip_interface(address).ip in ip_network(network, strict=False) for address in self.port(node, port).ipv4_addresses):
+                    return process, area
+        return None, None
+
+    def ospf_neighbor_state(self, node, port):
+        peer = self._linked_peer(node, port)
+        if not peer:
+            return None, "link down"
+        remote, remote_port = peer
+        local_process, local_area = self._ospf_assignment(node, port)
+        remote_process, remote_area = self._ospf_assignment(remote, remote_port)
+        if not local_process or not remote_process:
+            return remote, "OSPF not enabled"
+        if local_area != remote_area:
+            return remote, "area mismatch"
+        return remote, "Full"
+
+    def ospf_neighbor_output(self, node):
+        if not self.sessions[node].device.ospf_processes:
+            return "OSPF is not configured"
+        lines = ["Neighbor ID     Pri   State      Address         Interface"]
+        issues = []
+        for a, ap, b, bp in ROUTED_LINKS:
+            if node not in (a, b):
+                continue
+            port = ap if node == a else bp
+            remote, state = self.ospf_neighbor_state(node, port)
+            if state == "Full":
+                process = next(iter(self.sessions[remote].device.ospf_processes.values()))
+                address = self.port(remote, bp if remote == b else ap).ipv4_addresses[0].split("/")[0]
+                lines.append(f"{process.router_id:<16}1     FULL/-     {address:<16}{port}")
+            else:
+                issues.append(f"{port}: {state}")
+        return "\n".join(lines if len(lines) > 1 else lines + ["No OSPF neighbors; " + "; ".join(issues)])
+
+    def ospf_interface_output(self, node):
+        lines = ["Interface        PID   Area        IP Address          State Nbrs"]
+        for a, ap, b, bp in ROUTED_LINKS:
+            if node not in (a, b):
+                continue
+            port = ap if node == a else bp
+            process, area = self._ospf_assignment(node, port)
+            if process:
+                _, state = self.ospf_neighbor_state(node, port)
+                lines.append(f"{port:<16}{process.process_id:<6}{area:<12}{self.port(node, port).ipv4_addresses[0]:<20}Up    {1 if state == 'Full' else 0}")
+        return "\n".join(lines) if len(lines) > 1 else "OSPF is not configured on routed interfaces"
 
     def port(self, node, port):
         return self.sessions[node].device.interfaces[port]
@@ -328,6 +392,13 @@ class RoutedCampus:
         return {"success": False, "output": f"{source} → {destination}: request timed out; {detail}."}
 
     def grade(self):
+        if self.fault == "ospf-area":
+            links = [(a, ap) for a, ap, _, _ in ROUTED_LINKS] + [(b, bp) for _, _, b, bp in ROUTED_LINKS]
+            full = [(node, port, self.ospf_neighbor_state(node, port)[1] == "Full") for node, port in links]
+            histories = [command.casefold() for cli in self.sessions.values() for command in cli.history]
+            results = [{"label": f"{node} {port} has a Full OSPF neighbor", "passed": passed} for node, port, passed in full]
+            process = [{"label": "Inspected OSPF neighbors", "passed": any(command.startswith("show ip ospf neighbor") for command in histories)}, {"label": "Inspected OSPF interfaces", "passed": any(command.startswith("show ip ospf interface brief") for command in histories)}]
+            return {"results": results, "passed": all(item["passed"] for item in results), "passed_count": sum(item["passed"] for item in results), "total_count": len(results), "process": process, "process_passed_count": sum(item["passed"] for item in process), "process_total_count": len(process)}
         success = self.ping("SITE-A", "SITE-B", False)["success"]
         histories = [command.casefold() for cli in self.sessions.values() for command in cli.history]
         if self.fault == "next-hop":
