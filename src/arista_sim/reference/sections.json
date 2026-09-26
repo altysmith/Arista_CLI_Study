@@ -401,7 +401,7 @@
       {
         "title": "3. ACLs and management security",
         "description": "Learn ACL matching order and implicit deny, direction and placement, interface versus service ACLs, verification, AAA, TACACS+/RADIUS, fallback, and secure management access.",
-        "labs": [],
+        "labs": ["acl-management-edge"],
         "checkpoints": [
           {"question": "What happens when traffic reaches the end of an ACL without a matching permit?", "answer": "The implicit deny applies. A missing explicit permit can therefore block all traffic that did not match an earlier permitted entry."},
           {"question": "How do authentication, authorization, and accounting differ?", "answer": "Authentication verifies identity, authorization determines permitted actions, and accounting records activity. Treat them as separate controls when troubleshooting access."}

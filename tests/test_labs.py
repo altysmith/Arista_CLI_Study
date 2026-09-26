@@ -2,7 +2,7 @@ import unittest
 
 from arista_sim import DeviceState
 from arista_sim.labs import get_lab, grade_lab, load_labs, public_lab
-from arista_sim.models.device import OspfProcess, StaticRoute
+from arista_sim.models.device import AccessList, OspfProcess, StaticRoute
 
 
 class LabTests(unittest.TestCase):
@@ -71,6 +71,20 @@ class LabTests(unittest.TestCase):
         grade = grade_lab(device, lab, ["show ip ospf"])
         self.assertTrue(grade["passed"])
         self.assertEqual(grade["process_passed_count"], 1)
+
+    def test_acl_management_edge_grades_order_and_inbound_binding(self):
+        device = DeviceState()
+        lab = get_lab("acl-management-edge")
+        self.assertFalse(grade_lab(device, lab)["passed"])
+
+        device.access_lists["MGMT-SAFE"] = AccessList("MGMT-SAFE", [
+            "10 permit tcp 192.0.2.0/24 any eq ssh",
+            "20 deny ip any any",
+        ])
+        device.interfaces["Ethernet1"].ip_access_groups["in"] = "MGMT-SAFE"
+        grade = grade_lab(device, lab, ["show ip access-lists MGMT-SAFE", "show running-config"])
+        self.assertTrue(grade["passed"])
+        self.assertEqual(grade["process_passed_count"], 2)
 
 
 if __name__ == "__main__":

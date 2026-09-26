@@ -85,6 +85,12 @@ def _grade_check(device: DeviceState, check: dict[str, Any]) -> dict[str, Any]:
     elif check_type == "ospf_process":
         process = device.ospf_processes.get(int(check["process_id"]))
         passed = process is not None and process.router_id == check["router_id"] and (check["network"], check["area"]) in process.networks
+    elif check_type == "access_list_entries":
+        access_list = device.access_lists.get(str(check["name"]))
+        passed = access_list is not None and access_list.entries == check["entries"]
+    elif check_type == "interface_access_group":
+        interface = device.interfaces.get(str(check["interface"]))
+        passed = interface is not None and interface.ip_access_groups.get(str(check["direction"])) == check["name"]
     else:
         raise ValueError(f"Unsupported lab check type: {check_type}")
 
