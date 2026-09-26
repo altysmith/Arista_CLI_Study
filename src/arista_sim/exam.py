@@ -12,12 +12,13 @@ EXAM_FAMILY_IDS = (
 )
 
 
-def build_exam() -> list[dict[str, str]]:
+def build_exam(seed: str = "0") -> list[dict[str, str]]:
     families = {family["id"]: family for family in load_exercise_families()}
     questions = []
-    for family_id in EXAM_FAMILY_IDS:
+    offset = sum(seed.encode("utf-8"))
+    for index, family_id in enumerate(EXAM_FAMILY_IDS):
         family = families[family_id]
-        variant = family["variants"][0]
+        variant = family["variants"][(offset + index) % len(family["variants"])]
         questions.append({"exercise_id": family_id, "variant_id": variant["id"]})
     return questions
 

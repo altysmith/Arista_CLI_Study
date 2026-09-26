@@ -78,7 +78,8 @@ class CommandReferenceTests(unittest.TestCase):
             self.assertEqual(exam["question_count"], 8)
             self.assertEqual(app.exam()["active"]["id"], exam["id"])
             families = {family["id"]: family for family in load_exercise_families()}
-            answers = [families[question["exercise_id"]]["variants"][0]["answer"] for question in exam["questions"]]
+            stored = app.sessions.database.exam(exam["id"])["questions"]
+            answers = [next(variant["answer"] for variant in families[question["exercise_id"]]["variants"] if variant["id"] == stored[index]["variant_id"]) for index, question in enumerate(exam["questions"])]
             result = app.submit_exam(exam["id"], {"answers": answers})
             self.assertEqual(result["score"], result["total"])
             self.assertEqual(result["remediation"], [])

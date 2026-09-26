@@ -154,7 +154,7 @@ class LabApplication:
         if active:
             return public_exam(active["questions"], active["started_at"], active["id"])
         exam_id = uuid.uuid4().hex
-        questions = build_exam()
+        questions = build_exam(exam_id)
         started_at = self.sessions.database.create_exam(exam_id, questions)
         return public_exam(questions, started_at, exam_id)
 
