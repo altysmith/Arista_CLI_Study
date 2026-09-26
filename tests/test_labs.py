@@ -86,6 +86,18 @@ class LabTests(unittest.TestCase):
         self.assertTrue(grade["passed"])
         self.assertEqual(grade["process_passed_count"], 2)
 
+    def test_dhcp_snooping_trust_grades_protected_vlan_and_uplink(self):
+        device = DeviceState()
+        lab = get_lab("dhcp-snooping-trust")
+        self.assertFalse(grade_lab(device, lab)["passed"])
+
+        device.dhcp_snooping_enabled = True
+        device.dhcp_snooping_vlans.add(20)
+        device.interfaces["Ethernet48"].dhcp_snooping_trust = True
+        grade = grade_lab(device, lab, ["show ip dhcp snooping", "show running-config"])
+        self.assertTrue(grade["passed"])
+        self.assertEqual(grade["process_passed_count"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

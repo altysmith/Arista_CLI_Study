@@ -273,6 +273,10 @@ class Session:
             add(Mode.CONFIG, [literal("interface", "Select an interface"), *path], self._interface)
         add(Mode.CONFIG, [literal("ip", "IPv4 configuration"), literal("routing", "Enable IPv4 routing")], self._ip_routing)
         add(Mode.CONFIG, [literal("no", "Negate a command"), literal("ip"), literal("routing", "Disable IPv4 routing")], self._no_ip_routing)
+        add(Mode.CONFIG, [literal("ip"), literal("dhcp", "DHCP features"), literal("snooping", "Enable DHCP snooping")], self._dhcp_snooping)
+        add(Mode.CONFIG, [literal("no"), literal("ip"), literal("dhcp"), literal("snooping", "Disable DHCP snooping")], self._no_dhcp_snooping)
+        add(Mode.CONFIG, [literal("ip"), literal("dhcp"), literal("snooping"), literal("vlan", "Protected VLANs"), argument("vlans", "VLAN list", parse_vlan_list)], self._dhcp_snooping_vlans)
+        add(Mode.CONFIG, [literal("no"), literal("ip"), literal("dhcp"), literal("snooping"), literal("vlan", "Remove protected VLANs"), argument("vlans", "VLAN list", parse_vlan_list)], self._no_dhcp_snooping_vlans)
         add(Mode.CONFIG, [literal("ipv6", "IPv6 configuration"), literal("unicast-routing", "Enable IPv6 routing")], self._ipv6_routing)
         add(Mode.CONFIG, [literal("no"), literal("ipv6"), literal("unicast-routing", "Disable IPv6 routing")], self._no_ipv6_routing)
         add(Mode.CONFIG, [literal("ip"), literal("route", "Configure IPv4 static route"), argument("prefix", "IPv4 destination prefix", parse_ipv4_prefix), argument("next_hop", "Next hop or interface", parse_ipv4_route_hop)], self._ip_route)
@@ -333,6 +337,7 @@ class Session:
         add(mode, [literal("show"), literal("ipv6"), literal("route", "IPv6 routing table")], self._show_ipv6_route)
         add(mode, [literal("show"), literal("arp", "ARP table")], self._show_arp)
         add(mode, [literal("show"), literal("ip"), literal("arp", "ARP table")], self._show_arp)
+        add(mode, [literal("show"), literal("ip"), literal("dhcp", "DHCP information"), literal("snooping", "DHCP snooping state")], self._show_dhcp_snooping)
         add(mode, [literal("show"), literal("mac", "MAC information"), literal("address-table", "MAC address table")], self._show_mac)
         add(mode, [literal("show"), literal("lldp", "LLDP information"), literal("neighbors", "LLDP neighbors")], self._show_lldp)
         add(mode, [literal("show"), literal("lldp"), literal("neighbors"), literal("detail", "Detailed neighbor information")], self._show_lldp)
@@ -400,6 +405,8 @@ class Session:
             add(mode, [literal("no"), literal("service-policy"), literal("type"), literal("qos"), literal(direction), argument("name", "Policy-map name", parse_word)], self._no_service_policy)
         add(mode, [literal("no"), literal("autostate", "Disable SVI autostate")], self._no_autostate)
         add(mode, [literal("autostate", "Enable SVI autostate")], self._autostate)
+        add(mode, [literal("ip"), literal("dhcp"), literal("snooping"), literal("trust", "Trust DHCP server-facing path")], self._dhcp_snooping_trust)
+        add(mode, [literal("no"), literal("ip"), literal("dhcp"), literal("snooping"), literal("trust", "Remove DHCP snooping trust")], self._no_dhcp_snooping_trust)
 
     def _add_rip_commands(self, add) -> None:
         add(Mode.ROUTER_RIP, [literal("network", "Enable RIP on a network"), argument("network", "IPv4 network or address", parse_word)], self._rip_network)
@@ -711,12 +718,36 @@ class Session:
         self._set_interfaces("autostate", True)
         return ""
 
+    def _dhcp_snooping_trust(self, _: dict) -> str:
+        self._set_interfaces("dhcp_snooping_trust", True)
+        return ""
+
+    def _no_dhcp_snooping_trust(self, _: dict) -> str:
+        self._set_interfaces("dhcp_snooping_trust", False)
+        return ""
+
     def _ip_routing(self, _: dict) -> str:
         self.device.ip_routing = True
         return ""
 
     def _no_ip_routing(self, _: dict) -> str:
         self.device.ip_routing = False
+        return ""
+
+    def _dhcp_snooping(self, _: dict) -> str:
+        self.device.dhcp_snooping_enabled = True
+        return ""
+
+    def _no_dhcp_snooping(self, _: dict) -> str:
+        self.device.dhcp_snooping_enabled = False
+        return ""
+
+    def _dhcp_snooping_vlans(self, values: dict) -> str:
+        self.device.dhcp_snooping_vlans.update(values["vlans"])
+        return ""
+
+    def _no_dhcp_snooping_vlans(self, values: dict) -> str:
+        self.device.dhcp_snooping_vlans.difference_update(values["vlans"])
         return ""
 
     def _ipv6_routing(self, _: dict) -> str:
@@ -996,6 +1027,12 @@ class Session:
 
     def _show_arp(self, _: dict) -> str:
         return "Address         Age (min)  Hardware Addr   Interface\nNo ARP entries in the local single-device topology"
+
+    def _show_dhcp_snooping(self, _: dict) -> str:
+        status = "enabled" if self.device.dhcp_snooping_enabled else "disabled"
+        vlans = ",".join(str(vlan) for vlan in sorted(self.device.dhcp_snooping_vlans)) or "none"
+        trusted = ", ".join(interface.name for interface in self.device.interfaces.values() if interface.dhcp_snooping_trust) or "none"
+        return f"DHCP snooping is {status}\nProtected VLANs: {vlans}\nTrusted interfaces: {trusted}\nBinding table: unavailable in the local configuration-only model"
 
     def _show_mac(self, _: dict) -> str:
         return "Vlan    Mac Address       Type        Ports\nNo dynamically learned MAC addresses in the local single-device topology"

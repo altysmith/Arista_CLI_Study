@@ -30,6 +30,7 @@ class Interface:
     stp_port_priority: int = 128
     ip_access_groups: dict[str, str] = field(default_factory=dict)
     service_policies: dict[str, str] = field(default_factory=dict)
+    dhcp_snooping_trust: bool = False
     autostate: bool = True
 
     @property
@@ -111,6 +112,8 @@ class DeviceState:
     rip_networks: list[str] = field(default_factory=list)
     rip_redistribute: set[str] = field(default_factory=set)
     ospf_processes: dict[int, OspfProcess] = field(default_factory=dict)
+    dhcp_snooping_enabled: bool = False
+    dhcp_snooping_vlans: set[int] = field(default_factory=set)
     access_lists: dict[str, AccessList] = field(default_factory=dict)
     control_plane_acl: str = "default-control-plane-acl"
     ssh_service_acl: str = ""

@@ -91,6 +91,8 @@ def _grade_check(device: DeviceState, check: dict[str, Any]) -> dict[str, Any]:
     elif check_type == "interface_access_group":
         interface = device.interfaces.get(str(check["interface"]))
         passed = interface is not None and interface.ip_access_groups.get(str(check["direction"])) == check["name"]
+    elif check_type == "dhcp_snooping_vlans":
+        passed = device.dhcp_snooping_enabled and set(check["vlans"]).issubset(device.dhcp_snooping_vlans)
     else:
         raise ValueError(f"Unsupported lab check type: {check_type}")
 
