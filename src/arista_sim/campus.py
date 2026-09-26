@@ -222,7 +222,7 @@ class RoutedCampusSession(Session):
 class RoutedCampus:
     """A fixed three-router topology that evaluates static IPv4 forwarding and return paths only."""
     def __init__(self, fault="static"):
-        if fault not in ("static", "next-hop", "ospf-area", "ospf-route"):
+        if fault not in ("static", "next-hop", "ospf-area", "ospf-route", "ospf-link"):
             raise ValueError("Unknown routed campus fault")
         self.fault = fault
         self.sessions = {name: RoutedCampusSession(self, name) for name in ROUTED_SWITCHES}
@@ -250,7 +250,7 @@ class RoutedCampus:
             "CORE-1": (("10.10.10.0/24", "192.0.2.1"), ("10.20.20.0/24", "198.51.100.2")),
             "EDGE-B": (("10.10.10.0/24", "198.51.100.1"),) if self.fault == "next-hop" else (),
         }
-        if self.fault in ("ospf-area", "ospf-route"):
+        if self.fault in ("ospf-area", "ospf-route", "ospf-link"):
             routes = {node: () for node in ROUTED_SWITCHES}
         for node in ROUTED_SWITCHES:
             commands = ["enable", "configure terminal", f"hostname {node}", "ip routing"]
@@ -258,7 +258,7 @@ class RoutedCampus:
                 commands += [f"interface {port}", "no switchport", f"ip address {address}", "no shutdown", "exit"]
             for prefix, next_hop in routes[node]:
                 commands.append(f"ip route {prefix} {next_hop}")
-            if self.fault in ("ospf-area", "ospf-route"):
+            if self.fault in ("ospf-area", "ospf-route", "ospf-link"):
                 router_id = {"EDGE-A": "1.1.1.1", "CORE-1": "2.2.2.2", "EDGE-B": "3.3.3.3"}[node]
                 network = {"EDGE-A": "192.0.2.0/30", "CORE-1": "192.0.2.0/30", "EDGE-B": "198.51.100.0/30"}[node]
                 area = "1" if self.fault == "ospf-area" and node == "EDGE-B" else "0"
@@ -266,14 +266,18 @@ class RoutedCampus:
                     commands += ["router ospf 1", f"router-id {router_id}", "network 192.0.2.0/30 area 0", "network 198.51.100.0/30 area 0", "exit"]
                 else:
                     commands += ["router ospf 1", f"router-id {router_id}", f"network {network} area {area}"]
-                    if self.fault == "ospf-route" and node == "EDGE-A":
+                    if self.fault in ("ospf-route", "ospf-link") and node == "EDGE-A":
                         commands.append("network 10.10.10.0/24 area 0")
+                    if self.fault == "ospf-link" and node == "EDGE-B":
+                        commands.append("network 10.20.20.0/24 area 0")
                     if self.fault == "ospf-route" and node == "EDGE-B":
                         # The missing SITE-B LAN advertisement is the ticket fault.
                         pass
                     commands.append("exit")
             commands += ["end", "copy running-config startup-config", "disable"]
             self._run(node, commands)
+        if self.fault == "ospf-link":
+            self.sessions["EDGE-B"].device.interfaces["Ethernet1"].admin_up = False
 
     def _ospf_assignment(self, node, port):
         for process in self.sessions[node].device.ospf_processes.values():
@@ -322,7 +326,8 @@ class RoutedCampus:
             process, area = self._ospf_assignment(node, port)
             if process:
                 _, state = self.ospf_neighbor_state(node, port)
-                lines.append(f"{port:<16}{process.process_id:<6}{area:<12}{self.port(node, port).ipv4_addresses[0]:<20}Up    {1 if state == 'Full' else 0}")
+                interface_state = "Up" if self.port(node, port).admin_up else "Down"
+                lines.append(f"{port:<16}{process.process_id:<6}{area:<12}{self.port(node, port).ipv4_addresses[0]:<20}{interface_state:<6}{1 if state == 'Full' else 0}")
         return "\n".join(lines) if len(lines) > 1 else "OSPF is not configured on routed interfaces"
 
     def _ospf_component(self, node):
@@ -463,6 +468,13 @@ class RoutedCampus:
         return {"success": False, "output": f"{source} → {destination}: request timed out; {detail}."}
 
     def grade(self):
+        if self.fault == "ospf-link":
+            full = all(self.ospf_neighbor_state(node, port)[1] == "Full" for node, port in ((a, ap) for a, ap, _, _ in ROUTED_LINKS))
+            success = self.ping("SITE-A", "SITE-B", False)["success"]
+            histories = [command.casefold() for cli in self.sessions.values() for command in cli.history]
+            results = [{"label": "CORE-1 and EDGE-B form a Full OSPF adjacency", "passed": self.ospf_neighbor_state("EDGE-B", "Ethernet1")[1] == "Full"}, {"label": "SITE-A reaches SITE-B over the restored OSPF path", "passed": success}]
+            process = [{"label": "Inspected OSPF interface state", "passed": any(command.startswith("show ip ospf interface brief") for command in histories)}, {"label": "Inspected OSPF neighbors", "passed": any(command.startswith("show ip ospf neighbor") for command in histories)}]
+            return {"results": results, "passed": all(item["passed"] for item in results) and full, "passed_count": sum(item["passed"] for item in results), "total_count": len(results), "process": process, "process_passed_count": sum(item["passed"] for item in process), "process_total_count": len(process)}
         if self.fault == "ospf-route":
             advertised = any(network == "10.20.20.0/24" and area in ("0", "0.0.0.0") for process in self.sessions["EDGE-B"].device.ospf_processes.values() for network, area in process.networks)
             learned = any(route["prefix"] == "10.20.20.0/24" for route in self.ospf_routes("EDGE-A"))

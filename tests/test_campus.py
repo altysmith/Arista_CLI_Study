@@ -52,6 +52,16 @@ class CampusTests(unittest.TestCase):
         self.assertTrue(campus.ping("SITE-A", "SITE-B")["success"])
         self.assertTrue(campus.grade()["passed"])
 
+    def test_routed_campus_requires_an_operational_link_for_ospf(self):
+        campus = RoutedCampus("ospf-link")
+        edge_b = campus.sessions["EDGE-B"]
+        self.assertIn("link down", edge_b.execute("show ip ospf neighbor"))
+        self.assertIn("Down", edge_b.execute("show ip ospf interface brief"))
+        for command in ["enable", "configure terminal", "interface Ethernet1", "no shutdown", "end", "show ip ospf neighbor"]:
+            self.assertFalse(edge_b.execute(command).startswith("%"))
+        self.assertTrue(campus.ping("SITE-A", "SITE-B")["success"])
+        self.assertTrue(campus.grade()["passed"])
+
     def test_routed_campus_ticket_uses_the_browser_session_and_resumes(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "progress.sqlite3"
