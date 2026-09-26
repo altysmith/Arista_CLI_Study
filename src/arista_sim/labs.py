@@ -29,19 +29,25 @@ def get_lab(lab_id: str) -> dict[str, Any]:
 
 
 def public_lab(lab: dict[str, Any]) -> dict[str, Any]:
-    private_keys = {"checks", "setup_commands", "campus_fault"}
+    private_keys = {"checks", "setup_commands", "campus_fault", "process_checks"}
     return {key: value for key, value in lab.items() if key not in private_keys}
 
 
-def grade_lab(device: DeviceState, lab: dict[str, Any]) -> dict[str, Any]:
+def grade_lab(device: DeviceState, lab: dict[str, Any], history: list[str] | None = None) -> dict[str, Any]:
     results = [_grade_check(device, check) for check in lab["checks"]]
     passed_count = sum(result["passed"] for result in results)
-    return {
+    grade = {
         "passed": passed_count == len(results),
         "passed_count": passed_count,
         "total_count": len(results),
         "results": results,
     }
+    checks = lab.get("process_checks", [])
+    if checks:
+        commands = [command.casefold() for command in history or []]
+        process = [{"label": check["label"], "passed": any(command.startswith(check["command"].casefold()) for command in commands)} for check in checks]
+        grade.update({"process": process, "process_passed_count": sum(item["passed"] for item in process), "process_total_count": len(process)})
+    return grade
 
 
 def _grade_check(device: DeviceState, check: dict[str, Any]) -> dict[str, Any]:

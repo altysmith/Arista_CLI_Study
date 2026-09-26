@@ -201,7 +201,7 @@ class LabApplication:
         browser_session = self.sessions.get(session_id)
         if browser_session.campus:
             return browser_session.campus.grade()
-        return grade_lab(browser_session.cli.device, get_lab(browser_session.lab_id))
+        return grade_lab(browser_session.cli.device, get_lab(browser_session.lab_id), browser_session.cli.history)
 
     def campus_action(self, session_id, payload):
         current = self.sessions.get(session_id)
