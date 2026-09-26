@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime, timezone
 
 from arista_sim.curriculum import SkillMastery, TrainingMode, load_curriculum, validate_curriculum
 from arista_sim.exercises import choose_study_now, evaluate_attempt, load_exercise_families
@@ -58,6 +59,11 @@ class CommandReferenceTests(unittest.TestCase):
         self.assertNotIn("answer", selected)
         result = evaluate_attempt("arp-next-hop", "remote-server", "10.10.10.1")
         self.assertTrue(result["correct"])
+
+    def test_study_now_exposes_adaptive_factors(self):
+        selected = choose_study_now([{"topic_id": "ospf-workflow", "mode": "verify", "mastery": 20, "attempts": 3, "recent_error_rate": 1, "last_practiced_at": "2026-09-01 00:00:00"}], datetime(2026, 9, 25, tzinfo=timezone.utc))
+        self.assertIn("factors", selected)
+        self.assertGreaterEqual(selected["factors"]["recency"], 1)
 
 
 if __name__ == "__main__":

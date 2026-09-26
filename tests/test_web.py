@@ -192,6 +192,8 @@ class WebTests(unittest.TestCase):
                     attempt = json.loads(response.read())
                 self.assertTrue(attempt["correct"])
                 self.assertEqual(attempt["progress"]["mastery"], 100.0)
+                with urlopen(base_url + "/api/progress", timeout=2) as response:
+                    self.assertEqual(json.loads(response.read())["skills"][0]["topic_id"], "acl-workflow")
             finally:
                 server.shutdown()
                 server.server_close()

@@ -98,16 +98,16 @@ class ProgressDatabase:
 
     def skill_progress(self):
         with self.connect() as db:
-            rows = db.execute("SELECT topic_id,mode,mastery,attempts,correct_attempts,recent_error_rate,last_practiced_at FROM skill_mastery").fetchall()
+            rows = db.execute("SELECT topic_id,mode,mastery,attempts,correct_attempts,recent_error_rate,last_practiced_at FROM skill_mastery ORDER BY last_practiced_at DESC,topic_id,mode").fetchall()
         keys = ("topic_id", "mode", "mastery", "attempts", "correct_attempts", "recent_error_rate", "last_practiced_at")
         return [dict(zip(keys, row)) for row in rows]
 
     def record_attempt(self, exercise_id, topic_id, mode, correct, hints_used, error_tags):
         with self.connect() as db:
             db.execute("INSERT INTO exercise_attempts(exercise_id,topic_id,mode,correct,hints_used,error_tags) VALUES(?,?,?,?,?,?)", (exercise_id, topic_id, mode, int(correct), hints_used, json.dumps(error_tags)))
-            attempts, correct_attempts = db.execute("SELECT COUNT(*), COALESCE(SUM(correct),0) FROM exercise_attempts WHERE topic_id=? AND mode=?", (topic_id, mode)).fetchone()
+            attempts, correct_attempts, effective_correct = db.execute("SELECT COUNT(*), COALESCE(SUM(correct),0), COALESCE(SUM(CASE WHEN correct THEN 1.0 - MIN(hints_used, 3) * 0.1 ELSE 0 END),0) FROM exercise_attempts WHERE topic_id=? AND mode=?", (topic_id, mode)).fetchone()
             recent = db.execute("SELECT correct FROM exercise_attempts WHERE topic_id=? AND mode=? ORDER BY id DESC LIMIT 5", (topic_id, mode)).fetchall()
             recent_error_rate = 1 - sum(row[0] for row in recent) / len(recent)
-            mastery = round(100 * correct_attempts / attempts, 1)
+            mastery = round(100 * effective_correct / attempts, 1)
             db.execute("INSERT INTO skill_mastery(topic_id,mode,mastery,attempts,correct_attempts,recent_error_rate,last_practiced_at) VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(topic_id,mode) DO UPDATE SET mastery=excluded.mastery,attempts=excluded.attempts,correct_attempts=excluded.correct_attempts,recent_error_rate=excluded.recent_error_rate,last_practiced_at=excluded.last_practiced_at", (topic_id, mode, mastery, attempts, correct_attempts, recent_error_rate))
         return {"topic_id": topic_id, "mode": mode, "mastery": mastery, "attempts": attempts, "correct_attempts": correct_attempts, "recent_error_rate": recent_error_rate}

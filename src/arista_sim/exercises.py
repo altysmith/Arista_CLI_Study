@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from datetime import datetime, timezone
 from importlib.resources import files
 from typing import Any
 
@@ -50,35 +50,52 @@ def validate_exercise_families(families: list[dict[str, Any]]) -> None:
                 raise ValueError(f"Exercise family {family['id']} has an incomplete variant")
 
 
-def public_exercise(family: dict[str, Any], variant: dict[str, Any], reason: str) -> dict[str, Any]:
+def public_exercise(family: dict[str, Any], variant: dict[str, Any], reason: str, factors: dict[str, float] | None = None) -> dict[str, Any]:
     return {
         "id": family["id"], "title": family["title"], "topic_id": family["topic_id"],
         "mode": family["mode"], "variant_id": variant["id"], "prompt": variant["prompt"],
-        "hints": family.get("hints", []), "reason": reason,
+        "hints": family.get("hints", []), "reason": reason, "factors": factors or {},
     }
 
 
-def choose_study_now(progress: list[dict[str, Any]]) -> dict[str, Any]:
+def choose_study_now(progress: list[dict[str, Any]], now: datetime | None = None) -> dict[str, Any]:
     """Choose deterministically so the learner can understand and test the recommendation."""
+    now = now or datetime.now(timezone.utc)
     progress_by_skill = {(item["topic_id"], item["mode"]): item for item in progress}
-    ranked: list[tuple[float, dict[str, Any], str]] = []
+    topics = {topic["id"]: topic for section in load_curriculum()["sections"] for domain in section["domains"] for topic in domain["topics"]}
+    dependents = {topic_id: [] for topic_id in topics}
+    for topic in topics.values():
+        for prerequisite in topic["prerequisites"]:
+            dependents[prerequisite].append(topic["id"])
+    ranked: list[tuple[float, dict[str, Any], str, dict[str, float]]] = []
     for family in load_exercise_families():
         skill = progress_by_skill.get((family["topic_id"], family["mode"]))
         mastery = float(skill["mastery"]) if skill else 0.0
         error_rate = float(skill["recent_error_rate"]) if skill else 0.0
         attempts = int(skill["attempts"]) if skill else 0
         weakness = 1.0 - mastery / 100.0
-        error_factor = 1.0 + error_rate
-        new_skill_factor = 1.2 if attempts == 0 else 1.0
-        score = PRIORITY_WEIGHTS[family["priority"]] * weakness * error_factor * new_skill_factor
-        reason = (
-            f"{family['priority'].replace('_', ' ')} priority; new skill"
-            if attempts == 0 else
-            f"{family['priority'].replace('_', ' ')} priority; {mastery:.0f}% mastery and {error_rate:.0%} recent error rate"
-        )
-        ranked.append((score, family, reason))
-    _, family, reason = max(ranked, key=lambda item: (item[0], item[1]["id"]))
-    return public_exercise(family, family["variants"][0], reason)
+        recency = _recency_factor(skill.get("last_practiced_at") if skill else None, now)
+        dependent_need = max((_topic_need(topic_id, progress_by_skill) for topic_id in dependents[family["topic_id"]]), default=0.0)
+        dependency = 1.0 + dependent_need * 0.5
+        score = PRIORITY_WEIGHTS[family["priority"]] * weakness * (1.0 + error_rate) * recency * dependency
+        factors = {"priority": PRIORITY_WEIGHTS[family["priority"]], "weakness": round(weakness, 2), "recency": round(recency, 2), "recent_errors": round(error_rate, 2), "dependency": round(dependency, 2)}
+        reason = f"{family['priority'].replace('_', ' ')} priority; " + ("new skill" if attempts == 0 else f"{mastery:.0f}% mastery")
+        if recency > 1: reason += "; due for review"
+        if dependent_need: reason += "; supports a weak dependent topic"
+        ranked.append((score, family, reason, factors))
+    _, family, reason, factors = max(ranked, key=lambda item: (item[0], item[1]["id"]))
+    return public_exercise(family, family["variants"][0], reason, factors)
+
+
+def _topic_need(topic_id: str, progress_by_skill: dict[tuple[str, str], dict[str, Any]]) -> float:
+    values = [item for (candidate, _), item in progress_by_skill.items() if candidate == topic_id]
+    return max(((1 - float(item["mastery"]) / 100) * float(item["recent_error_rate"]) for item in values), default=0.0)
+
+
+def _recency_factor(last_practiced_at: str | None, now: datetime) -> float:
+    if not last_practiced_at: return 1.2
+    practiced = datetime.fromisoformat(last_practiced_at.replace(" ", "T")).replace(tzinfo=timezone.utc)
+    return 1.0 + min(max(0.0, (now - practiced).total_seconds() / 86400) / 14, 0.5)
 
 
 def evaluate_attempt(family_id: str, variant_id: str, answer: str) -> dict[str, Any]:

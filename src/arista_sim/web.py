@@ -127,6 +127,9 @@ class LabApplication:
         progress = self.sessions.database.skill_progress() if self.sessions.database else []
         return choose_study_now(progress)
 
+    def progress(self) -> dict[str, Any]:
+        return {"skills": self.sessions.database.skill_progress() if self.sessions.database else []}
+
     def submit_attempt(self, exercise_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         if not self.sessions.database:
             raise ValueError("Exercise progress requires durable storage")
@@ -239,6 +242,9 @@ class LabRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/study-now":
             self._send_json(self.app.study_now())
+            return
+        if path == "/api/progress":
+            self._send_json(self.app.progress())
             return
         self._send_asset("index.html" if path == "/" else path.removeprefix("/"))
 
