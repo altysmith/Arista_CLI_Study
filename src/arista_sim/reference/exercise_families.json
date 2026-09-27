@@ -60,6 +60,31 @@
     "variants": [{"id": "gateway-192-0-2-1", "prompt": "Configure an IPv4 default route through next hop 192.0.2.1. Enter the EOS command.", "answer": "ip route 0.0.0.0/0 192.0.2.1", "explanation": "A static default route uses 0.0.0.0/0 and the reachable next-hop address."}, {"id": "gateway-198-51-100-1", "prompt": "Configure an IPv4 default route through next hop 198.51.100.1. Enter the EOS command.", "answer": "ip route 0.0.0.0/0 198.51.100.1", "explanation": "The default prefix remains 0.0.0.0/0; only the next hop changes."}]
   },
   {
+    "id": "ethernet-mac-learning", "title": "Ethernet MAC learning", "topic_id": "ethernet-forwarding", "mode": "analyze", "priority": "high",
+    "hints": ["Switches learn source MAC addresses from received frames."], "error_tags": ["concept"],
+    "variants": [{"id": "source-learning", "prompt": "When a switch receives a frame, which address does it learn in its MAC table: source or destination?", "answer": "source", "explanation": "A switch learns the source MAC on the ingress port. It uses the destination MAC to decide where to forward."}]
+  },
+  {
+    "id": "service-layer-isolation", "title": "Service-layer isolation", "topic_id": "dhcp-dns-transport", "mode": "troubleshoot", "priority": "high",
+    "hints": ["Separate addressing from name resolution."], "error_tags": ["concept"],
+    "variants": [{"id": "dns-after-ip", "prompt": "A host can reach a server by IP address but not hostname. Which service should you investigate first?", "answer": "dns", "explanation": "Successful IP reachability makes basic routing less likely; the remaining symptom points first to name resolution."}]
+  },
+  {
+    "id": "ipv6-neighbor-discovery", "title": "IPv6 neighbor discovery", "topic_id": "ipv6-fundamentals", "mode": "recall", "priority": "high",
+    "hints": ["IPv6 does not use ARP."], "error_tags": ["concept"],
+    "variants": [{"id": "nd-not-arp", "prompt": "Which IPv6 function replaces IPv4 ARP for local neighbor resolution?", "answer": "neighbor discovery", "explanation": "IPv6 Neighbor Discovery performs local neighbor and router discovery rather than using ARP."}]
+  },
+  {
+    "id": "dhcp-snooping-boundary", "title": "DHCP snooping trust boundary", "topic_id": "access-layer-security", "mode": "analyze", "priority": "medium",
+    "hints": ["Trust infrastructure paths, not endpoints."], "error_tags": ["concept"],
+    "variants": [{"id": "uplink-only", "prompt": "In a DHCP snooping design, which port should normally be trusted: an endpoint port or the server-facing uplink?", "answer": "server-facing uplink", "explanation": "Trust belongs on the legitimate infrastructure path; client-facing ports remain untrusted."}]
+  },
+  {
+    "id": "qos-policy-chain", "title": "QoS policy chain", "topic_id": "qos-workflow", "mode": "verify", "priority": "medium",
+    "hints": ["A policy must be attached to affect an interface."], "error_tags": ["concept"],
+    "variants": [{"id": "attachment-before-effect", "prompt": "A QoS policy is configured but traffic behavior does not change. What should you verify next?", "answer": "policy attachment", "explanation": "Classification and policy definition are not enough; verify that the intended policy is attached in the correct interface direction."}]
+  },
+  {
     "id": "ospf-first-failed-dependency", "title": "OSPF troubleshooting order", "topic_id": "ospf-workflow", "mode": "troubleshoot", "priority": "very_high",
     "hints": ["Do not assume routes are the first thing to check.", "Adjacency is a prerequisite to learning routes dynamically."], "error_tags": ["dependency-missed", "verification-skipped"],
     "variants": [{"id": "neighbor-before-route", "prompt": "OSPF routes are missing after configuration. Which should be verified first: neighbor adjacency or the OSPF route table?", "answer": "neighbor adjacency", "explanation": "An OSPF adjacency is a prerequisite for learning routes. Prove the neighbor state before interpreting absent OSPF routes."}, {"id": "full-route-missing", "prompt": "An OSPF neighbor is Full but an expected prefix is absent. Should you keep troubleshooting Hello packets, or investigate advertisement and route selection?", "answer": "advertisement and route selection", "explanation": "A Full adjacency proves the neighbor relationship; the next dependency is whether the prefix is advertised and selected."}]

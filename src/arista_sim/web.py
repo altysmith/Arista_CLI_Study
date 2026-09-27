@@ -23,6 +23,7 @@ from .campus import Campus, RoutedCampus
 from .curriculum import load_curriculum
 from .exercises import choose_study_now, evaluate_attempt, exercise_choices
 from .exam import build_exam, public_exam, score_exam
+from .guided_study import guided_catalog, guided_topic, valid_guided_answer
 
 
 MAX_REQUEST_BYTES = 64 * 1024
@@ -133,6 +134,46 @@ class LabApplication:
         progress = self.sessions.database.skill_progress() if self.sessions.database else []
         attempts = self.sessions.database.exercise_attempt_counts() if self.sessions.database else {}
         return choose_study_now(progress, topic_id=topic_id, mode=mode, family_attempts=attempts)
+
+    def guided_study(self, topic_id=None) -> dict[str, Any]:
+        if not self.sessions.database:
+            raise ValueError("Guided Study requires durable storage")
+        progress = self.sessions.database.skill_progress()
+        completions = self.sessions.database.guided_completions()
+        attempts = self.sessions.database.exercise_attempt_counts()
+        return guided_topic(topic_id, progress, completions, attempts) if topic_id else guided_catalog(progress, completions, attempts)
+
+    def complete_guided_study(self, topic_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        if not self.sessions.database:
+            raise ValueError("Guided Study requires durable storage")
+        topic = self.guided_study(topic_id)
+        answers = payload.get("answers")
+        session_id = payload.get("session_id")
+        if not isinstance(answers, list) or not answers or not isinstance(session_id, str):
+            raise ValueError("Complete the recall questions and application lab first")
+        expected = {question["id"] for question in topic["questions"]}
+        received = {item.get("exercise_id") for item in answers if isinstance(item, dict)}
+        if received != expected:
+            raise ValueError("Complete every recall question before checking the application")
+        results = []
+        for answer in answers:
+            if not isinstance(answer, dict) or not all(isinstance(answer.get(key), str) for key in ("exercise_id", "variant_id", "answer")):
+                raise ValueError("Invalid guided-study answer")
+            if not valid_guided_answer(topic_id, answer["exercise_id"], answer["variant_id"]):
+                raise ValueError("That question does not belong to this topic")
+            result = evaluate_attempt(answer["exercise_id"], answer["variant_id"], answer["answer"])
+            self.sessions.database.record_attempt(answer["exercise_id"], result["topic_id"], result["mode"], result["correct"], 0, result["error_tags"])
+            results.append(result)
+        if not all(result["correct"] for result in results):
+            return {"completed": False, "answers": results, "message": "Review the explanations, then answer the recall questions again before moving on."}
+        browser_session = self.sessions.get(session_id)
+        if browser_session.lab_id != topic["lab_id"]:
+            return {"completed": False, "answers": results, "message": "Open and complete this topic's application lab before moving on."}
+        grade = self.grade(session_id)
+        if not grade.get("passed"):
+            return {"completed": False, "answers": results, "message": "The recall is correct. Finish and pass the application lab to complete this topic."}
+        completion = self.sessions.database.complete_guided_topic(topic_id, topic["title"])
+        return {"completed": True, "answers": results, "completion": completion, "message": "Topic complete. You can continue to the next guided topic."}
 
     def progress(self) -> dict[str, Any]:
         if not self.sessions.database:
@@ -308,6 +349,10 @@ class LabRequestHandler(BaseHTTPRequestHandler):
             query = parse_qs(request_url.query)
             self._send_json(self.app.study_now(query.get("topic_id", [None])[0], query.get("mode", [None])[0]))
             return
+        if path == "/api/guided-study":
+            query = parse_qs(request_url.query)
+            self._send_json(self.app.guided_study(query.get("topic_id", [None])[0]))
+            return
         if path == "/api/progress":
             self._send_json(self.app.progress())
             return
@@ -350,6 +395,12 @@ class LabRequestHandler(BaseHTTPRequestHandler):
                 parts = path.strip("/").split("/")
                 if len(parts) == 4:
                     self._send_json(self.app.submit_attempt(parts[2], payload))
+                    return
+
+            if path.startswith("/api/guided-study/") and path.endswith("/complete"):
+                parts = path.strip("/").split("/")
+                if len(parts) == 4:
+                    self._send_json(self.app.complete_guided_study(parts[2], payload))
                     return
 
             parts = path.strip("/").split("/")

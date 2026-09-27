@@ -14,6 +14,7 @@
       <nav id="primary-navigation" class="primary-nav">
         <button class="nav-link is-active" type="button" data-view="dashboard">Dashboard</button>
         <button class="nav-link" type="button" data-view="curriculum">Curriculum</button>
+        <button class="nav-link" type="button" data-view="study">Study</button>
         <button class="nav-link" type="button" data-view="practice">Practice</button>
         <button class="nav-link" type="button" data-view="lab">CLI Lab</button>
         <button class="nav-link" type="button" data-view="troubleshoot">Troubleshooting</button>
@@ -46,6 +47,10 @@
     <main id="curriculum-view" class="curriculum-view" hidden>
       <header class="curriculum-header"><div><p class="eyebrow">Certification learning path</p><h1>Curriculum workspace</h1><p>Work section by section, see evidence by training mode, and choose the next useful practice rather than chasing a single score.</p></div><button id="curriculum-study" class="secondary-button" type="button">Study recommended skill →</button></header>
       <div class="curriculum-layout"><aside id="curriculum-section-list" class="curriculum-section-list" aria-label="Curriculum sections"></aside><section class="section-workspace"><div id="curriculum-section-summary" class="section-summary"></div><div id="curriculum-domain-list" class="curriculum-domain-list"></div><section id="topic-detail" class="topic-detail" aria-live="polite"></section></section></div>
+    </main>
+    <main id="study-view" class="guided-study-view" hidden>
+      <header class="guided-study-header"><div><p class="eyebrow">Guided study session</p><h1>Learn it. Recall it. Apply it.</h1><p>Each topic takes about ten minutes. Answer the recall checks and pass the required application lab to complete it.</p></div><button id="repeat-topic" class="secondary-button" type="button">Repeat topic</button></header>
+      <div class="guided-study-layout"><aside id="guided-topic-list" class="guided-topic-list" aria-label="Guided study topics"></aside><section id="guided-session" class="guided-session" aria-live="polite"></section></div>
     </main>
     <main id="lab-workspace" class="workspace" hidden>
       <section id="campus-panel" class="campus-panel" aria-label="Campus topology" hidden>

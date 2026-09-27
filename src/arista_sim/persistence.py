@@ -68,6 +68,7 @@ class ProgressDatabase:
             db.execute("CREATE TABLE IF NOT EXISTS skill_mastery (topic_id TEXT NOT NULL, mode TEXT NOT NULL, mastery REAL NOT NULL, attempts INTEGER NOT NULL, correct_attempts INTEGER NOT NULL, recent_error_rate REAL NOT NULL, last_practiced_at TEXT NOT NULL, PRIMARY KEY(topic_id, mode))")
             db.execute("CREATE TABLE IF NOT EXISTS exam_sessions (id TEXT PRIMARY KEY, questions TEXT NOT NULL, started TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, submitted TEXT, results TEXT)")
             db.execute("CREATE TABLE IF NOT EXISTS activity_events (id INTEGER PRIMARY KEY, kind TEXT NOT NULL, title TEXT NOT NULL, detail TEXT NOT NULL, score REAL, occurred TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
+            db.execute("CREATE TABLE IF NOT EXISTS guided_topic_completions (topic_id TEXT PRIMARY KEY, completions INTEGER NOT NULL DEFAULT 0, completed TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
 
     @contextmanager
     def connect(self):
@@ -117,6 +118,17 @@ class ProgressDatabase:
     def record_activity(self, kind, title, detail, score=None):
         with self.connect() as db:
             db.execute("INSERT INTO activity_events(kind,title,detail,score) VALUES(?,?,?,?)", (kind, title, detail, score))
+
+    def guided_completions(self):
+        with self.connect() as db:
+            rows = db.execute("SELECT topic_id,completions,completed FROM guided_topic_completions").fetchall()
+        return {row[0]: {"completions": row[1], "completed_at": row[2]} for row in rows}
+
+    def complete_guided_topic(self, topic_id, title):
+        with self.connect() as db:
+            db.execute("INSERT INTO guided_topic_completions(topic_id,completions) VALUES(?,1) ON CONFLICT(topic_id) DO UPDATE SET completions=guided_topic_completions.completions+1, completed=CURRENT_TIMESTAMP", (topic_id,))
+            db.execute("INSERT INTO activity_events(kind,title,detail,score) VALUES(?,?,?,?)", ("study", title, "guided session completed", 100))
+        return self.guided_completions()[topic_id]
 
     def exercise_attempt_counts(self):
         with self.connect() as db:

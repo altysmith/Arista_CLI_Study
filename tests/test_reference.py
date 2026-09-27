@@ -55,7 +55,7 @@ class CommandReferenceTests(unittest.TestCase):
             validate_curriculum(curriculum)
 
     def test_exercise_families_evaluate_and_select_deterministically(self):
-        self.assertEqual(len(load_exercise_families()), 13)
+        self.assertEqual(len(load_exercise_families()), 18)
         selected = choose_study_now([])
         self.assertEqual(selected["id"], "vlan-trunk-mismatch")
         self.assertNotIn("answer", selected)

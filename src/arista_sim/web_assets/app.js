@@ -14,6 +14,10 @@ const state = {
   reference: null,
   exerciseChoices: [],
   exercise: null,
+  guided: null,
+  selectedGuidedTopic: null,
+  guidedAnswers: {},
+  guidedFeedback: null,
   hintsUsed: 0,
   exam: null,
   examIndex: 0,
@@ -140,19 +144,21 @@ async function startSession(labId) {
 
 async function initialize() {
   try {
-    const [catalog, reference, exercise, exercises, progress, exam, curriculum] = await Promise.all([api("/api/labs"), api("/api/reference"), api("/api/study-now"), api("/api/exercises"), api("/api/progress"), api("/api/exam"), api("/api/curriculum")]);
+    const [catalog, reference, exercise, exercises, progress, exam, curriculum, guided] = await Promise.all([api("/api/labs"), api("/api/reference"), api("/api/study-now"), api("/api/exercises"), api("/api/progress"), api("/api/exam"), api("/api/curriculum"), api("/api/guided-study")]);
     state.labs = catalog.labs;
     state.sections = catalog.sections || [];
     initializeSections();
     state.reference = reference;
     state.exerciseChoices = exercises.exercises;
     state.curriculum = curriculum;
+    state.guided = guided;
     state.progress = progress;
     document.querySelector("#practice-choice").replaceChildren(...state.exerciseChoices.map(choice => new Option(`${choice.title} · ${choice.mode}`, choice.id)));
     renderProgress(progress);
     renderExercise(exercise);
     renderDashboard();
     renderCurriculumWorkspace();
+    renderGuidedStudy();
     if (exam.active) renderExam(exam.active);
     labSelect.replaceChildren(...state.labs.map((lab) => {
       const option = document.createElement("option");
@@ -185,16 +191,72 @@ function topicMap() {
 function showView(view) {
   const dashboard = document.querySelector("#dashboard-view");
   const curriculum = document.querySelector("#curriculum-view");
+  const study = document.querySelector("#study-view");
   const workspace = document.querySelector("#lab-workspace");
-  const toWorkspace = !["dashboard", "curriculum"].includes(view);
+  const toWorkspace = !["dashboard", "curriculum", "study"].includes(view);
   dashboard.hidden = view !== "dashboard";
   curriculum.hidden = view !== "curriculum";
+  study.hidden = view !== "study";
   workspace.hidden = !toWorkspace;
   document.querySelectorAll(".nav-link").forEach(item => item.classList.toggle("is-active", item.dataset.view === view));
   if (!toWorkspace) window.scrollTo({top: 0, behavior: "smooth"});
   if (view === "practice") document.querySelector(".study-session")?.setAttribute("open", "");
   if (view === "exam") { document.querySelector(".study-session")?.setAttribute("open", ""); document.querySelector("#exam-start")?.focus(); }
   if (view === "progress") document.querySelector("#mastery-summary")?.scrollIntoView({behavior: "smooth", block: "center"});
+}
+
+function currentGuidedTopic() {
+  return state.guided?.topics.find(topic => topic.id === state.selectedGuidedTopic);
+}
+
+async function refreshGuidedStudy(topicId = state.selectedGuidedTopic) {
+  state.guided = await api("/api/guided-study");
+  if (topicId && state.guided.topics.some(topic => topic.id === topicId)) state.selectedGuidedTopic = topicId;
+  renderGuidedStudy();
+}
+
+function renderGuidedStudy() {
+  if (!state.guided?.topics?.length) return;
+  if (!state.selectedGuidedTopic) state.selectedGuidedTopic = state.guided.topics.find(topic => !topic.completion)?.id || state.guided.topics[0].id;
+  const topics = state.guided.topics;
+  const list = document.querySelector("#guided-topic-list");
+  list.replaceChildren(...topics.map((topic, index) => {
+    const button = document.createElement("button"); button.type = "button";
+    const priorComplete = index === 0 || Boolean(topics[index - 1].completion);
+    button.disabled = !priorComplete;
+    button.className = `${topic.id === state.selectedGuidedTopic ? "is-selected " : ""}${topic.completion ? "is-complete" : ""}`;
+    button.textContent = `${topic.completion ? "✓ " : ""}${index + 1}. ${topic.title}`;
+    button.addEventListener("click", () => { state.selectedGuidedTopic = topic.id; state.guidedFeedback = null; renderGuidedStudy(); });
+    return button;
+  }));
+  const topic = currentGuidedTopic();
+  const session = document.querySelector("#guided-session");
+  session.replaceChildren();
+  const label = document.createElement("p"); label.className = "eyebrow"; label.textContent = `${topic.section} · about 10 minutes`;
+  const title = document.createElement("h2"); title.textContent = topic.title;
+  const lesson = document.createElement("p"); lesson.className = "guided-lesson"; lesson.textContent = topic.lesson;
+  const steps = document.createElement("ol"); steps.className = "guided-steps";
+  ["Read the focused explanation.", "Answer every recall check from memory.", "Pass the required application lab.", "Return here to record completion and unlock the next topic."].forEach(text => steps.append(Object.assign(document.createElement("li"), {textContent: text})));
+  const recall = document.createElement("section"); recall.className = "guided-recall"; recall.append(Object.assign(document.createElement("h3"), {textContent: "Recall before you apply"}));
+  topic.questions.forEach((question, index) => {
+    const label = document.createElement("label"); label.textContent = `${index + 1}. ${question.prompt}`;
+    const answer = document.createElement("input"); answer.type = "text"; answer.autocomplete = "off"; answer.dataset.exerciseId = question.id; answer.dataset.variantId = question.variant_id; answer.value = state.guidedAnswers?.[question.id] || ""; answer.addEventListener("input", event => { state.guidedAnswers ||= {}; state.guidedAnswers[question.id] = event.currentTarget.value; });
+    label.append(answer); recall.append(label);
+  });
+  const lab = state.labs.find(item => item.id === topic.lab_id);
+  const application = document.createElement("section"); application.className = "guided-application"; application.append(Object.assign(document.createElement("h3"), {textContent: "Required application"}), Object.assign(document.createElement("p"), {textContent: `Complete and pass: ${lab?.title || topic.lab_id}. This is required to mark the topic complete.`}));
+  const openLab = document.createElement("button"); openLab.type = "button"; openLab.className = "secondary-button"; openLab.textContent = "Open required application lab →"; openLab.addEventListener("click", async () => { showView("lab"); await startSession(topic.lab_id); document.querySelector(".lab-card")?.scrollIntoView({behavior: "smooth", block: "start"}); }); application.append(openLab);
+  const complete = document.createElement("button"); complete.type = "button"; complete.className = "primary-button"; complete.textContent = topic.completion ? "Complete this repeat attempt" : "Check topic completion"; complete.addEventListener("click", async () => {
+    const answers = [...recall.querySelectorAll("input")].map(input => ({exercise_id: input.dataset.exerciseId, variant_id: input.dataset.variantId, answer: input.value}));
+    try { const result = await api(`/api/guided-study/${encodeURIComponent(topic.id)}/complete`, {method:"POST", body: JSON.stringify({answers, session_id: state.sessionId})}); state.guidedFeedback = result; if (result.completed) { state.progress = await api("/api/progress"); renderProgress(state.progress); renderDashboard(); await refreshGuidedStudy(topic.id); } else renderGuidedStudy(); } catch (error) { state.guidedFeedback = {message: error.message}; renderGuidedStudy(); }
+  });
+  const feedback = document.createElement("div"); feedback.className = "guided-feedback";
+  if (state.guidedFeedback) { feedback.textContent = state.guidedFeedback.message; for (const answer of state.guidedFeedback.answers || []) feedback.append(Object.assign(document.createElement("p"), {textContent: `${answer.correct ? "✓" : "Review"}: ${answer.explanation}`})); }
+  const status = document.createElement("p"); status.className = "guided-status"; status.textContent = topic.completion ? `Completed ${topic.completion.completions} time${topic.completion.completions === 1 ? "" : "s"}. Repeat keeps this history.` : "Not completed yet.";
+  const next = topics[topics.findIndex(item => item.id === topic.id) + 1];
+  const continueButton = document.createElement("button"); continueButton.type = "button"; continueButton.className = "secondary-button"; continueButton.textContent = "Continue to next topic →"; continueButton.hidden = !topic.completion || !next;
+  continueButton.addEventListener("click", () => { state.selectedGuidedTopic = next.id; state.guidedAnswers = {}; state.guidedFeedback = null; renderGuidedStudy(); });
+  session.append(label, title, lesson, steps, recall, application, complete, feedback, status, continueButton);
 }
 
 function renderCurriculumWorkspace() {
@@ -218,6 +280,19 @@ function startRecommendedPractice() {
   showView("practice");
   document.querySelector(".study-session")?.scrollIntoView({behavior: "smooth", block: "start"});
   document.querySelector("#exercise-answer")?.focus();
+}
+
+function startGuidedStudy(topicId = null) {
+  if (topicId) state.selectedGuidedTopic = topicId;
+  state.guidedAnswers = {};
+  state.guidedFeedback = null;
+  renderGuidedStudy();
+  document.querySelector("#dashboard-view").hidden = true;
+  document.querySelector("#curriculum-view").hidden = true;
+  document.querySelector("#lab-workspace").hidden = true;
+  document.querySelector("#study-view").hidden = false;
+  document.querySelectorAll(".nav-link").forEach(item => item.classList.toggle("is-active", item.dataset.view === "study"));
+  window.scrollTo({top: 0, behavior: "smooth"});
 }
 
 function renderDashboard() {
@@ -780,11 +855,22 @@ function renderSection() {
 
 document.querySelectorAll(".nav-link").forEach(button => button.addEventListener("click", () => showView(button.dataset.view)));
 document.querySelector("#mobile-menu").addEventListener("click", event => { const sidebar = document.querySelector(".app-sidebar"); const open = sidebar.classList.toggle("is-open"); event.currentTarget.setAttribute("aria-expanded", String(open)); });
-document.querySelector("#dashboard-study").addEventListener("click", startRecommendedPractice);
-document.querySelector("#curriculum-study").addEventListener("click", startRecommendedPractice);
+document.querySelector("#dashboard-study").addEventListener("click", () => startGuidedStudy());
+document.querySelector("#curriculum-study").addEventListener("click", () => startGuidedStudy(state.selectedTopic));
+document.querySelector("#repeat-topic").addEventListener("click", async () => {
+  const topic = currentGuidedTopic();
+  if (!topic) return;
+  state.guidedAnswers = {};
+  state.guidedFeedback = null;
+  await startSession(topic.lab_id);
+  await api(`/api/sessions/${state.sessionId}/reset`, {method: "POST", body: "{}"});
+  await startSession(topic.lab_id);
+  renderGuidedStudy();
+});
 document.querySelectorAll("[data-action]").forEach(button => button.addEventListener("click", () => {
   const action = button.dataset.action;
-  if (action === "study" || action === "practice" || action === "weak") startRecommendedPractice();
+  if (action === "study") startGuidedStudy();
+  else if (action === "practice" || action === "weak") startRecommendedPractice();
   else if (action === "lab") showView("lab");
   else if (action === "curriculum") showView("curriculum");
   else if (action === "progress" || action === "recent") showView("progress");
