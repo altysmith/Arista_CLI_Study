@@ -8,10 +8,12 @@ const state = {
   sections: [],
   curriculum: null,
   studyModules: null,
+  studyProgress: {},
   progress: {skills: [], recent_mistakes: []},
   selectedCurriculumSection: null,
   selectedTopic: null,
   selectedModule: null,
+  curriculumSearch: "",
   labId: null,
   reference: null,
   exerciseChoices: [],
@@ -146,7 +148,7 @@ async function startSession(labId) {
 
 async function initialize() {
   try {
-    const [catalog, reference, exercise, exercises, progress, exam, curriculum, guided, studyModules] = await Promise.all([api("/api/labs"), api("/api/reference"), api("/api/study-now"), api("/api/exercises"), api("/api/progress"), api("/api/exam"), api("/api/curriculum"), api("/api/guided-study"), api("/api/study-modules")]);
+    const [catalog, reference, exercise, exercises, progress, exam, curriculum, guided, studyModules, studyProgress, deployment] = await Promise.all([api("/api/labs"), api("/api/reference"), api("/api/study-now"), api("/api/exercises"), api("/api/progress"), api("/api/exam"), api("/api/curriculum"), api("/api/guided-study"), api("/api/study-modules"), api("/api/study-progress"), api("/health")]);
     state.labs = catalog.labs;
     state.sections = catalog.sections || [];
     initializeSections();
@@ -154,6 +156,8 @@ async function initialize() {
     state.exerciseChoices = exercises.exercises;
     state.curriculum = curriculum;
     state.studyModules = studyModules;
+    state.studyProgress = studyProgress;
+    document.querySelector("#deployment-metadata").textContent = deployment.commit ? `${deployment.commit.slice(0, 7)} · ${deployment.deployed_at || "deployment time unavailable"}` : "Local development build";
     state.guided = guided;
     state.progress = progress;
     document.querySelector("#practice-choice").replaceChildren(...state.exerciseChoices.map(choice => new Option(`${choice.title} · ${choice.mode}`, choice.id)));
@@ -292,25 +296,78 @@ function renderSourceCurriculum() {
     button.append(Object.assign(document.createElement("b"), {textContent: index + 1}), Object.assign(document.createElement("span"), {textContent: item.title}));
     button.addEventListener("click", () => { state.selectedCurriculumSection = item.id; state.selectedModule = null; renderSourceCurriculum(); }); return button;
   }));
-  const summary = document.querySelector("#curriculum-section-summary"); summary.replaceChildren(Object.assign(document.createElement("p"), {className:"eyebrow", textContent:"Source curriculum"}), Object.assign(document.createElement("h2"), {textContent:section.title}), Object.assign(document.createElement("p"), {textContent:`${section.modules.length} directly selectable lessons and labs from the authoritative Markdown modules.`}));
-  const moduleList = document.querySelector("#curriculum-domain-list"); const card = document.createElement("article"); card.className = "domain-card"; card.append(Object.assign(document.createElement("h3"), {textContent:"Lessons and labs"}));
-  section.modules.forEach(module => { const button = document.createElement("button"); button.type="button"; button.textContent=`${module.number}. ${module.title}${module.kind === "lab" ? " · Lab" : ""}`; button.addEventListener("click", () => { state.selectedModule=module.id; renderSourceCurriculum(); document.querySelector("#topic-detail").scrollIntoView({behavior:"smooth",block:"start"}); }); card.append(button); }); moduleList.replaceChildren(card);
+  const completed = section.modules.filter(module => moduleCompletion(module) === 100).length;
+  const summary = document.querySelector("#curriculum-section-summary"); summary.replaceChildren(Object.assign(document.createElement("p"), {className:"eyebrow", textContent:"Authoritative Drive curriculum"}), Object.assign(document.createElement("h2"), {textContent:section.title}), Object.assign(document.createElement("p"), {textContent:`${section.modules.length} lessons and labs · ${completed} complete. Choose any module; numeric order is recommended, not required.`}));
+  const moduleList = document.querySelector("#curriculum-domain-list"); const card = document.createElement("article"); card.className = "domain-card module-index"; card.append(Object.assign(document.createElement("h3"), {textContent:"Lessons and labs"}));
+  const normalizedSearch = state.curriculumSearch.trim().toLowerCase();
+  const visibleModules = section.modules.filter(module => !normalizedSearch || `${module.title} ${module.markdown}`.toLowerCase().includes(normalizedSearch));
+  if (!visibleModules.length) card.append(Object.assign(document.createElement("p"), {className:"empty-state", textContent:"No modules in this section match your search."}));
+  visibleModules.forEach(module => { const button = document.createElement("button"); button.type="button"; button.className = `${module.id === selected.id ? "is-selected " : ""}${moduleCompletion(module) === 100 ? "is-complete" : ""}`; button.textContent=`${moduleCompletion(module) === 100 ? "✓ " : ""}${module.number}. ${module.title}${module.kind === "lab" ? " · Lab" : ""}`; button.addEventListener("click", () => { state.selectedModule=module.id; renderSourceCurriculum(); document.querySelector("#topic-detail").scrollIntoView({behavior:"smooth",block:"start"}); }); card.append(button); }); moduleList.replaceChildren(card);
   const detail = document.querySelector("#topic-detail");
   const detailLabel = document.createElement("p"); detailLabel.className = "eyebrow"; detailLabel.textContent = `${section.title} · ${selected.kind}`;
   const detailTitle = document.createElement("h2"); detailTitle.textContent = `${selected.number}. ${selected.title}`;
-  detail.replaceChildren(detailLabel, detailTitle);
-  detail.append(renderMarkdownModule(selected.markdown));
+  const meter = document.createElement("div"); meter.className = "module-progress"; meter.innerHTML = `<span style="width:${moduleCompletion(selected)}%"></span>`;
+  const meterLabel = document.createElement("p"); meterLabel.className = "module-progress-label"; meterLabel.textContent = selected.activities ? `${moduleCompletion(selected)}% complete across Learn, Flashcards, Quiz, Exercise, and Mastery` : "Interactive build pending for this section";
+  detail.replaceChildren(detailLabel, detailTitle, meter, meterLabel);
+  if (selected.activities) detail.append(renderInteractiveModule(selected, section));
+  else detail.append(renderMarkdownContent(selected.markdown), Object.assign(document.createElement("p"), {className:"planned", textContent:"This section is available for reference. Its full interactive build is not yet complete."}));
 }
 
-function renderMarkdownModule(markdown) {
-  const content = document.createElement("div"); content.className = "module-markdown"; let list = null;
-  for (const line of markdown.split("\n")) {
-    const heading = line.match(/^(#{1,3})\s+(.+)$/); const item = line.match(/^[-*]\s+(?:\[ \]\s+)?(.+)$/); const ordered = line.match(/^\d+\.\s+(.+)$/);
-    if (heading) { list=null; const element=document.createElement(`h${Math.min(heading[1].length + 1, 4)}`); element.textContent=heading[2].replace(/^\d+\.\s+/, ""); content.append(element); }
-    else if (item || ordered) { if (!list || list.tagName !== (ordered ? "OL" : "UL")) { list=document.createElement(ordered ? "ol" : "ul"); content.append(list); } list.append(Object.assign(document.createElement("li"), {textContent:(item || ordered)[1]})); }
-    else if (line.trim()) { list=null; content.append(Object.assign(document.createElement("p"), {textContent:line})); }
-  }
-  return content;
+function emptyModuleProgress(module) {
+  return {learn_reviewed:false, flashcards_revealed:[], quiz_answers:module.activities.quiz.map(() => ""), quiz_correct:module.activities.quiz.map(() => false), practical_complete:false, practical_notes:"", mastery_checked:[]};
+}
+
+function moduleProgress(module) {
+  if (!module.activities) return null;
+  const empty=emptyModuleProgress(module); const saved=state.studyProgress[module.id] || {};
+  for (const key of Object.keys(empty)) if (key in saved) empty[key]=saved[key];
+  return empty;
+}
+
+function moduleCompletion(module) {
+  if (!module.activities) return 0;
+  const progress = moduleProgress(module); const activities = module.activities;
+  const earned = Number(progress.learn_reviewed) + Number(progress.flashcards_revealed.length >= activities.flashcards.length) + Number(progress.quiz_correct.filter(Boolean).length >= activities.quiz.length) + Number(progress.practical_complete) + Number(progress.mastery_checked.length >= activities.mastery.length);
+  return earned * 20;
+}
+
+async function saveModuleProgress(module, progress, rerender = true) {
+  state.studyProgress[module.id] = progress; if (rerender) renderSourceCurriculum();
+  try { state.studyProgress[module.id] = await api("/api/study-progress", {method:"POST", body:JSON.stringify({module_id:module.id, state:progress})}); }
+  catch (error) { alert(`Progress was not saved: ${error.message}`); }
+}
+
+function renderInteractiveModule(module, section) {
+  const activities = module.activities; const progress = moduleProgress(module); const wrapper = document.createElement("div"); wrapper.className = "interactive-module";
+  const learn = activityPanel("Learn", "Read the supplied lesson before marking it reviewed."); learn.id = "module-learn"; learn.append(renderMarkdownContent(activities.learn));
+  const learnButton = actionButton(progress.learn_reviewed ? "✓ Learn reviewed" : "Mark Learn reviewed", () => { progress.learn_reviewed = !progress.learn_reviewed; saveModuleProgress(module, progress); }); learn.append(learnButton);
+  const flashcards = activityPanel("Flashcards", "Answers stay hidden until you reveal each card.");
+  activities.flashcards.forEach((card, index) => { const revealed = progress.flashcards_revealed.includes(index); const item=document.createElement("button"); item.type="button"; item.className=`flashcard ${revealed ? "is-revealed" : ""}`; item.append(Object.assign(document.createElement("strong"), {textContent:card.question}), Object.assign(document.createElement("span"), {textContent:revealed ? card.answer : "Reveal answer"})); item.addEventListener("click", () => { if (!progress.flashcards_revealed.includes(index)) progress.flashcards_revealed.push(index); saveModuleProgress(module, progress); }); flashcards.append(item); });
+  const quiz = activityPanel("Knowledge Quiz", "Answer from memory. Check your response against the source lesson, then mark it correct or retry it.");
+  activities.quiz.forEach((question, index) => { const item=document.createElement("article"); item.className=`quiz-item ${progress.quiz_correct[index] ? "is-correct" : ""}`; item.append(Object.assign(document.createElement("h4"), {textContent:`${index + 1}. ${question}`})); const answer=document.createElement("textarea"); answer.rows=3; answer.value=progress.quiz_answers[index] || ""; answer.placeholder="Write your answer before checking the source…"; const review=document.createElement("details"); review.className="quiz-source-review"; review.append(Object.assign(document.createElement("summary"), {textContent:"Check against the source Learn content"}), renderMarkdownContent(activities.learn)); const controls=document.createElement("div"); controls.className="quiz-controls"; const correct=actionButton("My answer is correct", () => { progress.quiz_answers[index]=answer.value; progress.quiz_correct[index]=true; saveModuleProgress(module, progress); }); correct.disabled=!answer.value.trim(); answer.addEventListener("input", () => { progress.quiz_answers[index]=answer.value; correct.disabled=!answer.value.trim(); }); answer.addEventListener("change", () => saveModuleProgress(module, progress, false)); controls.append(correct, actionButton("Retry this question", () => { progress.quiz_correct[index]=false; saveModuleProgress(module, progress); })); item.append(answer, review, controls); quiz.append(item); });
+  const practical = activityPanel("Practical Exercise", "Complete the supplied task and keep optional notes as evidence."); practical.append(renderMarkdownContent(activities.practical)); const notes=document.createElement("textarea"); notes.rows=4; notes.placeholder="Optional exercise notes…"; notes.value=progress.practical_notes; notes.addEventListener("input", () => { progress.practical_notes=notes.value; }); notes.addEventListener("change", () => saveModuleProgress(module, progress, false)); const practicalLabel=document.createElement("label"); practicalLabel.className="mastery-item"; const practicalCheck=document.createElement("input"); practicalCheck.type="checkbox"; practicalCheck.checked=progress.practical_complete; practicalCheck.addEventListener("change", () => { progress.practical_notes=notes.value; progress.practical_complete=practicalCheck.checked; saveModuleProgress(module, progress); }); practicalLabel.append(practicalCheck, document.createTextNode("I completed this practical exercise")); practical.append(notes, practicalLabel);
+  const mastery = activityPanel("Mastery Check", "Check each outcome only when you can perform it without relying on the lesson."); activities.mastery.forEach((text,index) => { const label=document.createElement("label"); label.className="mastery-item"; const check=document.createElement("input"); check.type="checkbox"; check.checked=progress.mastery_checked.includes(index); check.addEventListener("change", () => { progress.mastery_checked = check.checked ? [...new Set([...progress.mastery_checked,index])] : progress.mastery_checked.filter(item => item !== index); saveModuleProgress(module, progress); }); label.append(check,document.createTextNode(text)); mastery.append(label); });
+  const navigation=document.createElement("nav"); navigation.className="module-navigation"; const index=section.modules.findIndex(item => item.id === module.id); if (index>0) navigation.append(actionButton("← Previous module", () => { state.selectedModule=section.modules[index-1].id; renderSourceCurriculum(); window.scrollTo({top:0,behavior:"smooth"}); })); if (index<section.modules.length-1) navigation.append(actionButton("Next module →", () => { state.selectedModule=section.modules[index+1].id; renderSourceCurriculum(); window.scrollTo({top:0,behavior:"smooth"}); }));
+  wrapper.append(learn, flashcards, quiz, practical, mastery, navigation); return wrapper;
+}
+
+function activityPanel(title, description) { const panel=document.createElement("section"); panel.className="module-activity"; panel.append(Object.assign(document.createElement("h3"), {textContent:title}), Object.assign(document.createElement("p"), {className:"activity-guide", textContent:description})); return panel; }
+function actionButton(label, handler) { const button=document.createElement("button"); button.type="button"; button.className="secondary-button"; button.textContent=label; button.addEventListener("click", handler); return button; }
+
+function appendInlineMarkdown(element, text) {
+  const parts=text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g); for (const part of parts) { if (part.startsWith("`") && part.endsWith("`")) element.append(Object.assign(document.createElement("code"), {textContent:part.slice(1,-1)})); else if (part.startsWith("**") && part.endsWith("**")) element.append(Object.assign(document.createElement("strong"), {textContent:part.slice(2,-2)})); else element.append(document.createTextNode(part)); }
+}
+
+function renderMarkdownContent(markdown) {
+  const content=document.createElement("div"); content.className="module-markdown"; const lines=markdown.split("\n"); let list=null;
+  for (let index=0; index<lines.length; index++) { const line=lines[index];
+    if (line.startsWith("```")) { const language=line.slice(3); const values=[]; while (++index<lines.length && !lines[index].startsWith("```")) values.push(lines[index]); const pre=document.createElement("pre"); const code=document.createElement("code"); code.className=language ? `language-${language}` : ""; code.textContent=values.join("\n"); pre.append(code); content.append(pre); list=null; continue; }
+    if (line.startsWith("|") && lines[index+1]?.match(/^\|[-:| ]+\|$/)) { const table=document.createElement("table"); const header=document.createElement("tr"); line.split("|").slice(1,-1).forEach(value => { const cell=document.createElement("th"); appendInlineMarkdown(cell,value.trim()); header.append(cell); }); const head=document.createElement("thead"); head.append(header); table.append(head); index++; const body=document.createElement("tbody"); while (lines[index+1]?.startsWith("|")) { index++; const row=document.createElement("tr"); lines[index].split("|").slice(1,-1).forEach(value => { const cell=document.createElement("td"); appendInlineMarkdown(cell,value.trim()); row.append(cell); }); body.append(row); } table.append(body); content.append(table); list=null; continue; }
+    const heading=line.match(/^(#{1,3})\s+(.+)$/); const item=line.match(/^[-*]\s+(.+)$/); const ordered=line.match(/^\d+\.\s+(.+)$/);
+    if (heading) { list=null; const element=document.createElement(`h${Math.min(heading[1].length+2,5)}`); appendInlineMarkdown(element,heading[2]); content.append(element); }
+    else if (item || ordered) { const tag=ordered ? "OL" : "UL"; if (!list || list.tagName!==tag) { list=document.createElement(tag.toLowerCase()); content.append(list); } const entry=document.createElement("li"); appendInlineMarkdown(entry,(item||ordered)[1]); list.append(entry); }
+    else if (line.trim()) { list=null; const paragraph=document.createElement("p"); appendInlineMarkdown(paragraph,line.trim()); content.append(paragraph); }
+  } return content;
 }
 
 function startRecommendedPractice() {
@@ -932,6 +989,10 @@ document.querySelector("#global-search").addEventListener("keydown", event => {
   if (state.reference?.categories.some(category => category.commands.some(command => `${command.command} ${command.description}`.toLowerCase().includes(query)))) {
     showView("lab"); referenceDialog.showModal(); referenceSearch.value = query; renderReference(query); return;
   }
+  state.curriculumSearch = query;
+  const match = state.studyModules?.sections.flatMap(section => section.modules.map(module => ({section, module}))).find(item => `${item.module.title} ${item.module.markdown}`.toLowerCase().includes(query));
+  if (match) { state.selectedCurriculumSection = match.section.id; state.selectedModule = match.module.id; }
+  renderCurriculumWorkspace();
   showView("curriculum");
 });
 

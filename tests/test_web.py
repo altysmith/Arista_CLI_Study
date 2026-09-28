@@ -52,6 +52,13 @@ class WebTests(unittest.TestCase):
         self.assertIn(b"Command reference", body)
         self.assertIn(b"Practice a specific skill", body)
 
+        status, _, body = self.request("/health")
+        health = json.loads(body)
+        self.assertEqual(status, 200)
+        self.assertEqual(health["status"], "ok")
+        self.assertIn("commit", health)
+        self.assertIn("deployed_at", health)
+
         status, _, body = self.request("/api/labs")
         catalog = json.loads(body)
         self.assertEqual(status, 200)
@@ -98,6 +105,13 @@ class WebTests(unittest.TestCase):
         self.assertEqual(len(eos), 16)
         self.assertEqual(eos[0]["id"], "arista-eos-fundamentals:01-consistent-networking-with-eos")
         self.assertEqual(eos[-1]["title"], "LAB — Setting Up Management Connectivity")
+        fundamentals = modules["sections"][0]["modules"]
+        self.assertTrue(all(module["activities"] for module in fundamentals))
+        self.assertIsNone(modules["sections"][1]["modules"][0]["activities"])
+
+        status, _, body = self.request("/api/study-progress")
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body), {})
 
     def test_terminal_api_preserves_prompts_and_state(self):
         session = self.create_session()
@@ -217,6 +231,13 @@ class WebTests(unittest.TestCase):
                 self.assertEqual(attempt["progress"]["mastery"], 100.0)
                 with urlopen(base_url + "/api/progress", timeout=2) as response:
                     self.assertEqual(json.loads(response.read())["skills"][0]["topic_id"], "acl-workflow")
+                module_id = "network-engineering-fundamentals:01-introduction-to-networks"
+                module_state = {"learn_reviewed": True, "flashcards_revealed": [0, 1, 2, 3], "quiz_answers": ["a", "b", "c", "d", "e"], "quiz_correct": [True, True, True, True, True], "practical_complete": True, "practical_notes": "completed", "mastery_checked": [0, 1, 2]}
+                request = Request(base_url + "/api/study-progress", data=json.dumps({"module_id": module_id, "state": module_state}).encode("utf-8"), headers={"Content-Type": "application/json"})
+                with urlopen(request, timeout=2) as response:
+                    self.assertTrue(json.loads(response.read())["learn_reviewed"])
+                with urlopen(base_url + "/api/study-progress", timeout=2) as response:
+                    self.assertEqual(json.loads(response.read())[module_id]["mastery_checked"], [0, 1, 2])
             finally:
                 server.shutdown()
                 server.server_close()

@@ -69,6 +69,7 @@ class ProgressDatabase:
             db.execute("CREATE TABLE IF NOT EXISTS exam_sessions (id TEXT PRIMARY KEY, questions TEXT NOT NULL, started TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, submitted TEXT, results TEXT)")
             db.execute("CREATE TABLE IF NOT EXISTS activity_events (id INTEGER PRIMARY KEY, kind TEXT NOT NULL, title TEXT NOT NULL, detail TEXT NOT NULL, score REAL, occurred TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
             db.execute("CREATE TABLE IF NOT EXISTS guided_topic_completions (topic_id TEXT PRIMARY KEY, completions INTEGER NOT NULL DEFAULT 0, completed TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
+            db.execute("CREATE TABLE IF NOT EXISTS study_module_progress (module_id TEXT PRIMARY KEY, state TEXT NOT NULL, updated TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
 
     @contextmanager
     def connect(self):
@@ -129,6 +130,17 @@ class ProgressDatabase:
             db.execute("INSERT INTO guided_topic_completions(topic_id,completions) VALUES(?,1) ON CONFLICT(topic_id) DO UPDATE SET completions=guided_topic_completions.completions+1, completed=CURRENT_TIMESTAMP", (topic_id,))
             db.execute("INSERT INTO activity_events(kind,title,detail,score) VALUES(?,?,?,?)", ("study", title, "guided session completed", 100))
         return self.guided_completions()[topic_id]
+
+    def study_progress(self):
+        with self.connect() as db:
+            rows = db.execute("SELECT module_id,state,updated FROM study_module_progress ORDER BY module_id").fetchall()
+        return {row[0]: {**json.loads(row[1]), "updated_at": row[2]} for row in rows}
+
+    def save_study_progress(self, module_id, state):
+        stored = json.dumps(state, separators=(",", ":"))
+        with self.connect() as db:
+            db.execute("INSERT INTO study_module_progress(module_id,state) VALUES(?,?) ON CONFLICT(module_id) DO UPDATE SET state=excluded.state,updated=CURRENT_TIMESTAMP", (module_id, stored))
+        return self.study_progress()[module_id]
 
     def exercise_attempt_counts(self):
         with self.connect() as db:

@@ -4,6 +4,7 @@ import argparse
 import json
 import mimetypes
 import os
+from pathlib import Path
 import threading
 import uuid
 import webbrowser
@@ -24,10 +25,24 @@ from .curriculum import load_curriculum
 from .exercises import choose_study_now, evaluate_attempt, exercise_choices
 from .exam import build_exam, public_exam, score_exam
 from .guided_study import guided_catalog, guided_topic, valid_guided_answer
-from .study_modules import load_study_modules
+from .study_modules import load_study_modules, study_module_lookup
 
 
 MAX_REQUEST_BYTES = 64 * 1024
+
+
+def _valid_indexes(values: list[Any], length: int) -> bool:
+    return len(values) == len(set(values)) and all(isinstance(value, int) and not isinstance(value, bool) and 0 <= value < length for value in values)
+
+
+def deployment_metadata() -> dict[str, Any]:
+    metadata_path = Path.cwd() / "release.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8")) if metadata_path.is_file() else {}
+    return {
+        "status": "ok",
+        "commit": os.environ.get("ARISTA_RELEASE_COMMIT") or metadata.get("commit"),
+        "deployed_at": os.environ.get("ARISTA_DEPLOYED_AT") or metadata.get("deployed_at"),
+    }
 
 
 @dataclass
@@ -133,6 +148,35 @@ class LabApplication:
 
     def study_modules(self) -> dict[str, Any]:
         return load_study_modules()
+
+    def study_progress(self) -> dict[str, Any]:
+        return self.sessions.database.study_progress() if self.sessions.database else {}
+
+    def save_study_progress(self, payload: dict[str, Any]) -> dict[str, Any]:
+        if not self.sessions.database:
+            raise ValueError("Study progress requires durable storage")
+        module_id = payload.get("module_id")
+        state = payload.get("state")
+        module = study_module_lookup().get(module_id)
+        if not module or not module["activities"] or not isinstance(state, dict):
+            raise ValueError("Invalid study module progress")
+        allowed = {"learn_reviewed", "flashcards_revealed", "quiz_answers", "quiz_correct", "practical_complete", "practical_notes", "mastery_checked"}
+        if set(state) != allowed:
+            raise ValueError("Incomplete study module progress")
+        if not isinstance(state["learn_reviewed"], bool) or not isinstance(state["practical_complete"], bool):
+            raise ValueError("Invalid study completion state")
+        if not isinstance(state["practical_notes"], str) or len(state["practical_notes"]) > 10000:
+            raise ValueError("Invalid practical notes")
+        if not all(isinstance(state[key], list) for key in ("flashcards_revealed", "quiz_answers", "quiz_correct", "mastery_checked")):
+            raise ValueError("Invalid study activity state")
+        activities = module["activities"]
+        if len(state["quiz_answers"]) != len(activities["quiz"]) or len(state["quiz_correct"]) != len(activities["quiz"]):
+            raise ValueError("Quiz progress does not match this module")
+        if not all(isinstance(answer, str) and len(answer) <= 10000 for answer in state["quiz_answers"]) or not all(isinstance(value, bool) for value in state["quiz_correct"]):
+            raise ValueError("Invalid quiz progress")
+        if not _valid_indexes(state["flashcards_revealed"], len(activities["flashcards"])) or not _valid_indexes(state["mastery_checked"], len(activities["mastery"])):
+            raise ValueError("Invalid study checklist progress")
+        return self.sessions.database.save_study_progress(module_id, state)
 
     def study_now(self, topic_id=None, mode=None) -> dict[str, Any]:
         progress = self.sessions.database.skill_progress() if self.sessions.database else []
@@ -349,8 +393,14 @@ class LabRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/curriculum":
             self._send_json(self.app.curriculum())
             return
+        if path == "/health" or path == "/version":
+            self._send_json(deployment_metadata())
+            return
         if path == "/api/study-modules":
             self._send_json(self.app.study_modules())
+            return
+        if path == "/api/study-progress":
+            self._send_json(self.app.study_progress())
             return
         if path == "/api/study-now":
             query = parse_qs(request_url.query)
@@ -386,6 +436,10 @@ class LabRequestHandler(BaseHTTPRequestHandler):
             payload = self._read_json()
             if path == "/api/sessions":
                 self._send_json(self.app.create_session(payload), HTTPStatus.CREATED)
+                return
+
+            if path == "/api/study-progress":
+                self._send_json(self.app.save_study_progress(payload))
                 return
 
             if path == "/api/exam":

@@ -15,6 +15,7 @@ SECTION_SOURCES = (
 )
 MODULE_FILENAME = re.compile(r"^(?P<number>\d{2})-(?P<slug>[a-z0-9-]+)\.md$")
 TITLE = re.compile(r"^#\s+(?:(?P<number>\d+)\.\s+)?(?P<title>.+?)\s*$", re.MULTILINE)
+TOP_LEVEL_SECTION = re.compile(r"^#\s+(.+?)\s*$", re.MULTILINE)
 
 
 def load_study_modules() -> dict[str, Any]:
@@ -51,8 +52,48 @@ def load_study_modules() -> dict[str, Any]:
                 "title": module_title,
                 "kind": "lab" if is_lab else "lesson",
                 "markdown": markdown,
+                "activities": _parse_activities(markdown) if section_id == "network-engineering-fundamentals" else None,
             })
         if not modules:
             raise ValueError(f"{section_id} has no learner modules")
         sections.append({"id": section_id, "title": title, "modules": modules})
     return {"version": 1, "sections": sections, "module_count": len(module_ids)}
+
+
+def _parse_activities(markdown: str) -> dict[str, Any]:
+    """Parse the handoff activity headings without rewriting source content."""
+    matches = list(TOP_LEVEL_SECTION.finditer(markdown))
+    sections: dict[str, str] = {}
+    for index, match in enumerate(matches[1:], start=1):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(markdown)
+        sections[match.group(1).strip().lower()] = markdown[match.end():end].strip()
+
+    required = ("learn", "flashcards", "knowledge quiz", "practical exercise", "mastery check")
+    missing = [name for name in required if not sections.get(name)]
+    if missing:
+        raise ValueError(f"Module is missing required activities: {', '.join(missing)}")
+
+    flashcards = []
+    for block in re.split(r"\n(?=\*\*)", sections["flashcards"]):
+        match = re.match(r"\*\*(.+?)\*\*\s*(.+)", block.strip(), re.DOTALL)
+        if match:
+            flashcards.append({"question": match.group(1).strip(), "answer": match.group(2).strip()})
+    quiz = [match.group(1).strip() for match in re.finditer(r"^\d+\.\s+(.+)$", sections["knowledge quiz"], re.MULTILINE)]
+    mastery = [match.group(1).strip() for match in re.finditer(r"^-\s+\[[ xX]\]\s+(.+)$", sections["mastery check"], re.MULTILINE)]
+    if not flashcards or not quiz or not mastery:
+        raise ValueError("Module activities must include flashcards, quiz questions, and mastery checks")
+    return {
+        "learn": sections["learn"],
+        "flashcards": flashcards,
+        "quiz": quiz,
+        "practical": sections["practical exercise"],
+        "mastery": mastery,
+    }
+
+
+def study_module_ids() -> set[str]:
+    return {module["id"] for section in load_study_modules()["sections"] for module in section["modules"]}
+
+
+def study_module_lookup() -> dict[str, dict[str, Any]]:
+    return {module["id"]: module for section in load_study_modules()["sections"] for module in section["modules"]}
