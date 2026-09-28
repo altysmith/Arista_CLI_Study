@@ -24,6 +24,7 @@ from .curriculum import load_curriculum
 from .exercises import choose_study_now, evaluate_attempt, exercise_choices
 from .exam import build_exam, public_exam, score_exam
 from .guided_study import guided_catalog, guided_topic, valid_guided_answer
+from .study_modules import load_study_modules
 
 
 MAX_REQUEST_BYTES = 64 * 1024
@@ -129,6 +130,9 @@ class LabApplication:
 
     def curriculum(self) -> dict[str, Any]:
         return load_curriculum()
+
+    def study_modules(self) -> dict[str, Any]:
+        return load_study_modules()
 
     def study_now(self, topic_id=None, mode=None) -> dict[str, Any]:
         progress = self.sessions.database.skill_progress() if self.sessions.database else []
@@ -344,6 +348,9 @@ class LabRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/curriculum":
             self._send_json(self.app.curriculum())
+            return
+        if path == "/api/study-modules":
+            self._send_json(self.app.study_modules())
             return
         if path == "/api/study-now":
             query = parse_qs(request_url.query)

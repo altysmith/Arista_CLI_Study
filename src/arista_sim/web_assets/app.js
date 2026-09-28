@@ -7,9 +7,11 @@ const state = {
   labs: [],
   sections: [],
   curriculum: null,
+  studyModules: null,
   progress: {skills: [], recent_mistakes: []},
   selectedCurriculumSection: null,
   selectedTopic: null,
+  selectedModule: null,
   labId: null,
   reference: null,
   exerciseChoices: [],
@@ -144,13 +146,14 @@ async function startSession(labId) {
 
 async function initialize() {
   try {
-    const [catalog, reference, exercise, exercises, progress, exam, curriculum, guided] = await Promise.all([api("/api/labs"), api("/api/reference"), api("/api/study-now"), api("/api/exercises"), api("/api/progress"), api("/api/exam"), api("/api/curriculum"), api("/api/guided-study")]);
+    const [catalog, reference, exercise, exercises, progress, exam, curriculum, guided, studyModules] = await Promise.all([api("/api/labs"), api("/api/reference"), api("/api/study-now"), api("/api/exercises"), api("/api/progress"), api("/api/exam"), api("/api/curriculum"), api("/api/guided-study"), api("/api/study-modules")]);
     state.labs = catalog.labs;
     state.sections = catalog.sections || [];
     initializeSections();
     state.reference = reference;
     state.exerciseChoices = exercises.exercises;
     state.curriculum = curriculum;
+    state.studyModules = studyModules;
     state.guided = guided;
     state.progress = progress;
     document.querySelector("#practice-choice").replaceChildren(...state.exerciseChoices.map(choice => new Option(`${choice.title} · ${choice.mode}`, choice.id)));
@@ -260,6 +263,7 @@ function renderGuidedStudy() {
 }
 
 function renderCurriculumWorkspace() {
+  if (state.studyModules) return renderSourceCurriculum();
   if (!state.curriculum) return;
   const sections = state.curriculum.sections;
   if (!state.selectedCurriculumSection || !sections.some(section => section.id === state.selectedCurriculumSection)) state.selectedCurriculumSection = sections.at(-1)?.id || sections[0]?.id;
@@ -274,6 +278,39 @@ function renderCurriculumWorkspace() {
   const summary = document.querySelector("#curriculum-section-summary"); summary.replaceChildren(); const eyebrow = document.createElement("p"); eyebrow.className = "eyebrow"; eyebrow.textContent = "Selected section"; const title = document.createElement("h2"); title.textContent = section.title.replace(/^L1 · /, ""); const description = document.createElement("p"); description.textContent = section.description; const status = document.createElement("span"); status.className = "section-status"; const value = average(sectionValues); status.textContent = value === null ? "No skills assessed in this section yet" : `${value}% assessed mastery across ${sectionValues.length} skill signals`; summary.append(eyebrow, title, description, status);
   const domainList = document.querySelector("#curriculum-domain-list"); domainList.replaceChildren(...section.domains.map(domain => { const card = document.createElement("article"); card.className = "domain-card"; const heading = document.createElement("h3"); heading.textContent = domain.title; card.append(heading); for (const topic of domain.topics) { const button = document.createElement("button"); button.type = "button"; button.textContent = topic.title; button.addEventListener("click", () => { state.selectedTopic = topic.id; renderCurriculumWorkspace(); document.querySelector("#topic-detail").scrollIntoView({behavior:"smooth",block:"nearest"}); }); card.append(button); } return card; }));
   const detail = document.querySelector("#topic-detail"); detail.replaceChildren(); const topicEyebrow = document.createElement("p"); topicEyebrow.className = "eyebrow"; topicEyebrow.textContent = "Topic readiness by mode"; const topicTitle = document.createElement("h2"); topicTitle.textContent = selected.title; const topicDescription = document.createElement("p"); topicDescription.textContent = selected.description; const modeGrid = document.createElement("div"); modeGrid.className = "mode-grid"; for (const mode of Object.keys(MODE_LABELS)) { const card = document.createElement("article"); card.className = "mode-card"; const label = document.createElement("strong"); label.textContent = MODE_LABELS[mode]; const skill = skills.find(item => item.topic_id === selected.id && item.mode === mode); const result = document.createElement("span"); result.textContent = skill ? `${Math.round(skill.mastery)}% mastery · ${skill.attempts} attempts` : "Not yet assessed"; card.append(label, result); const choice = state.exerciseChoices.find(item => item.topic_id === selected.id && item.mode === mode); if (choice) { const button = document.createElement("button"); button.type = "button"; button.textContent = "Practice →"; button.addEventListener("click", async () => { renderExercise(await api(`/api/study-now?topic_id=${encodeURIComponent(selected.id)}&mode=${encodeURIComponent(mode)}`)); showView("practice"); document.querySelector(".study-session")?.scrollIntoView({behavior:"smooth",block:"start"}); }); card.append(button); } else { const planned = document.createElement("small"); planned.className = "planned"; planned.textContent = "Practice content not yet available"; card.append(planned); } modeGrid.append(card); } detail.append(topicEyebrow, topicTitle, topicDescription, modeGrid);
+}
+
+function renderSourceCurriculum() {
+  const sections = state.studyModules.sections;
+  if (!state.selectedCurriculumSection || !sections.some(section => section.id === state.selectedCurriculumSection)) state.selectedCurriculumSection = sections[0].id;
+  const section = sections.find(item => item.id === state.selectedCurriculumSection);
+  if (!state.selectedModule || !section.modules.some(module => module.id === state.selectedModule)) state.selectedModule = section.modules[0].id;
+  const selected = section.modules.find(module => module.id === state.selectedModule);
+  const sectionList = document.querySelector("#curriculum-section-list");
+  sectionList.replaceChildren(...sections.map((item, index) => {
+    const button = document.createElement("button"); button.type = "button"; button.className = `curriculum-section-button ${item.id === section.id ? "is-selected" : ""}`;
+    button.append(Object.assign(document.createElement("b"), {textContent: index + 1}), Object.assign(document.createElement("span"), {textContent: item.title}));
+    button.addEventListener("click", () => { state.selectedCurriculumSection = item.id; state.selectedModule = null; renderSourceCurriculum(); }); return button;
+  }));
+  const summary = document.querySelector("#curriculum-section-summary"); summary.replaceChildren(Object.assign(document.createElement("p"), {className:"eyebrow", textContent:"Source curriculum"}), Object.assign(document.createElement("h2"), {textContent:section.title}), Object.assign(document.createElement("p"), {textContent:`${section.modules.length} directly selectable lessons and labs from the authoritative Markdown modules.`}));
+  const moduleList = document.querySelector("#curriculum-domain-list"); const card = document.createElement("article"); card.className = "domain-card"; card.append(Object.assign(document.createElement("h3"), {textContent:"Lessons and labs"}));
+  section.modules.forEach(module => { const button = document.createElement("button"); button.type="button"; button.textContent=`${module.number}. ${module.title}${module.kind === "lab" ? " · Lab" : ""}`; button.addEventListener("click", () => { state.selectedModule=module.id; renderSourceCurriculum(); document.querySelector("#topic-detail").scrollIntoView({behavior:"smooth",block:"start"}); }); card.append(button); }); moduleList.replaceChildren(card);
+  const detail = document.querySelector("#topic-detail");
+  const detailLabel = document.createElement("p"); detailLabel.className = "eyebrow"; detailLabel.textContent = `${section.title} · ${selected.kind}`;
+  const detailTitle = document.createElement("h2"); detailTitle.textContent = `${selected.number}. ${selected.title}`;
+  detail.replaceChildren(detailLabel, detailTitle);
+  detail.append(renderMarkdownModule(selected.markdown));
+}
+
+function renderMarkdownModule(markdown) {
+  const content = document.createElement("div"); content.className = "module-markdown"; let list = null;
+  for (const line of markdown.split("\n")) {
+    const heading = line.match(/^(#{1,3})\s+(.+)$/); const item = line.match(/^[-*]\s+(?:\[ \]\s+)?(.+)$/); const ordered = line.match(/^\d+\.\s+(.+)$/);
+    if (heading) { list=null; const element=document.createElement(`h${Math.min(heading[1].length + 1, 4)}`); element.textContent=heading[2].replace(/^\d+\.\s+/, ""); content.append(element); }
+    else if (item || ordered) { if (!list || list.tagName !== (ordered ? "OL" : "UL")) { list=document.createElement(ordered ? "ol" : "ul"); content.append(list); } list.append(Object.assign(document.createElement("li"), {textContent:(item || ordered)[1]})); }
+    else if (line.trim()) { list=null; content.append(Object.assign(document.createElement("p"), {textContent:line})); }
+  }
+  return content;
 }
 
 function startRecommendedPractice() {
@@ -338,6 +375,19 @@ function renderDashboard() {
   else activityList.replaceChildren(...activities.map(item => { const row = document.createElement("div"); row.className = "activity-item"; const title = document.createElement("strong"); title.textContent = topics.get(item.title)?.title || item.title; const detail = document.createElement("span"); detail.textContent = `${item.detail}${item.score === null ? "" : ` · ${Math.round(item.score)}%`} · ${item.occurred_at}`; row.append(title, detail); return row; }));
 
   const cards = document.querySelector("#curriculum-cards");
+  if (state.studyModules) {
+    cards.replaceChildren(...state.studyModules.sections.map((section, index) => {
+      const card = document.createElement("article"); card.className = "curriculum-card";
+      const number = document.createElement("b"); number.textContent = String(index + 1);
+      const title = document.createElement("h3"); title.textContent = section.title;
+      const description = document.createElement("p"); description.textContent = `${section.modules.length} supplied lessons and labs`;
+      const status = document.createElement("span"); status.textContent = "Choose any module";
+      const button = document.createElement("button"); button.type = "button"; button.textContent = "Open section →";
+      button.addEventListener("click", () => { state.selectedCurriculumSection = section.id; state.selectedModule = null; renderCurriculumWorkspace(); showView("curriculum"); });
+      card.append(number, title, description, status, button); return card;
+    }));
+    return;
+  }
   cards.replaceChildren(...state.curriculum.sections.map((section, index) => {
     const topicIds = section.domains.flatMap(domain => domain.topics.map(topic => topic.id));
     const values = skills.filter(skill => topicIds.includes(skill.topic_id)).map(skill => Number(skill.mastery)); const readiness = state.progress.readiness?.sections?.[section.id]; const value = readiness?.mastery ?? average(values);

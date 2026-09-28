@@ -86,6 +86,19 @@ class WebTests(unittest.TestCase):
         self.assertEqual(len(curriculum["sections"]), 5)
         self.assertEqual(curriculum["sections"][0]["id"], "advanced-networking-concepts")
 
+        status, _, body = self.request("/api/study-modules")
+        modules = json.loads(body)
+        self.assertEqual(status, 200)
+        self.assertEqual([section["title"] for section in modules["sections"]], [
+            "Network Engineering Fundamentals", "Arista EOS Fundamentals",
+            "Layer 2 Switching Fundamentals", "Layer 3 Routing Fundamentals",
+            "Advanced Networking Concepts",
+        ])
+        eos = modules["sections"][1]["modules"]
+        self.assertEqual(len(eos), 16)
+        self.assertEqual(eos[0]["id"], "arista-eos-fundamentals:01-consistent-networking-with-eos")
+        self.assertEqual(eos[-1]["title"], "LAB — Setting Up Management Connectivity")
+
     def test_terminal_api_preserves_prompts_and_state(self):
         session = self.create_session()
         session_id = session["session_id"]
