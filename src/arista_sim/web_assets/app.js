@@ -1,999 +1,329 @@
-const state = {
-  sessionId: null,
-  prompt: "switch>",
-  history: [],
-  historyIndex: 0,
-  draft: "",
-  labs: [],
-  sections: [],
-  curriculum: null,
-  studyModules: null,
-  studyProgress: {},
-  progress: {skills: [], recent_mistakes: []},
-  selectedCurriculumSection: null,
-  selectedTopic: null,
-  selectedModule: null,
-  curriculumSearch: "",
-  labId: null,
-  reference: null,
-  exerciseChoices: [],
-  exercise: null,
-  guided: null,
-  selectedGuidedTopic: null,
-  guidedAnswers: {},
-  guidedFeedback: null,
-  hintsUsed: 0,
-  exam: null,
-  examIndex: 0,
-  examAnswers: [],
-  busy: false,
-};
-
-const output = document.querySelector("#terminal-output");
-const form = document.querySelector("#terminal-form");
-const input = document.querySelector("#command-input");
-const promptLabel = document.querySelector("#prompt");
-const connection = document.querySelector(".connection");
-const connectionLabel = document.querySelector("#connection-label");
-const labSelect = document.querySelector("#lab-select");
-const referenceDialog = document.querySelector("#command-reference");
-const referenceSearch = document.querySelector("#reference-search");
-const referenceGroups = document.querySelector("#reference-groups");
+const state = { studyModules: null, studyProgress: {}, selectedCurriculumSection: null, selectedModule: null, curriculumSearch: "" };
 
 async function api(path, options = {}) {
-  const response = await fetch(path, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
-  if (!response.headers.get("content-type")?.includes("application/json")) throw new Error("Your sign-in may have expired. Refresh this page to sign in again; saved configurations will remain.");
+  const response = await fetch(path, { headers: { "Content-Type": "application/json" }, ...options });
+  if (!response.headers.get("content-type")?.includes("application/json")) throw new Error("Your sign-in may have expired. Refresh this page to sign in again; saved progress will remain.");
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error || "Simulator request failed");
+  if (!response.ok) throw new Error(payload.error || "Curriculum request failed");
   return payload;
 }
 
 function setConnection(kind, label) {
+  const connection = document.querySelector(".connection");
   connection.classList.remove("ready", "error");
   if (kind) connection.classList.add(kind);
-  connectionLabel.textContent = label;
-}
-
-function appendLine(text, className = "") {
-  const line = document.createElement("div");
-  line.className = className;
-  line.textContent = text;
-  output.append(line);
-  while (output.children.length > 500) output.firstChild.remove();
-  output.scrollTop = output.scrollHeight;
-}
-
-function appendCommand(prompt, command) {
-  const line = document.createElement("div");
-  line.className = "command-line";
-  const promptSpan = document.createElement("span");
-  promptSpan.className = "old-prompt";
-  promptSpan.textContent = `${prompt} `;
-  line.append(promptSpan, document.createTextNode(command));
-  output.append(line);
-  output.scrollTop = output.scrollHeight;
-}
-
-function renderLab(lab) {
-  document.querySelector("#lab-title").textContent = lab.title;
-  document.querySelector("#lab-difficulty").textContent = lab.difficulty;
-  document.querySelector("#lab-time").textContent = `${lab.estimated_minutes} min`;
-  document.querySelector("#lab-brief").textContent = lab.brief;
-
-  const objectives = document.querySelector("#objectives");
-  objectives.replaceChildren(...lab.objectives.map((objective) => {
-    const item = document.createElement("li");
-    item.textContent = objective;
-    return item;
-  }));
-
-  const hints = document.querySelector("#hints-list");
-  hints.replaceChildren(...lab.hints.map((hint) => {
-    const item = document.createElement("li");
-    item.textContent = hint;
-    return item;
-  }));
-}
-
-function resetBrowserState() {
-  state.history = [];
-  state.historyIndex = 0;
-  state.draft = "";
-  output.replaceChildren();
-  document.querySelector("#grade-panel").hidden = true;
-  document.querySelector("#progress-label").textContent = "Not checked";
-}
-
-async function startSession(labId) {
-  state.busy = true;
-  labSelect.disabled = true;
-  try {
-    input.disabled = true;
-    resetBrowserState();
-    const session = await api("/api/sessions", {
-      method: "POST",
-      body: JSON.stringify({ lab_id: labId, resume: true }),
-    });
-    state.sessionId = session.session_id;
-    state.labId = session.lab.id;
-    state.prompt = session.prompt;
-    labSelect.value = state.labId;
-    promptLabel.textContent = state.prompt;
-    renderLab(session.lab);
-    renderCampus(session.campus, session.active);
-    state.history = session.history || [];
-    state.historyIndex = state.history.length;
-    try { localStorage.setItem("arista-last-lab", state.labId); } catch {}
-    document.querySelector("#save-status").textContent = session.durable ? "Configurations autosave on the server. Each lab resumes where you left off, including from another device. Reset starts over." : "Progress lasts until this local server stops. Enable a data path for durable saves.";
-    appendLine("Arista Network Foundations Simulator — Browser Lab", "welcome");
-    appendLine("Lab loaded. Use show commands to inspect the current configuration.", "welcome");
-    appendLine("Type ? for contextual help. Complete the objectives, then check your work.", "welcome");
-    appendLine("");
-    setConnection("ready", "Simulator ready");
-    input.disabled = session.closed;
-    if (session.closed) appendLine("Session closed. Reset the lab to continue.", "welcome");
-    input.focus();
-  } catch (error) {
-    setConnection("error", "Simulator unavailable");
-    appendLine(error.message, "error-line");
-    input.disabled = true;
-  } finally {
-    state.busy = false;
-    labSelect.disabled = false;
-  }
+  document.querySelector("#connection-label").textContent = label;
 }
 
 async function initialize() {
   try {
-    const [catalog, reference, exercise, exercises, progress, exam, curriculum, guided, studyModules, studyProgress, deployment] = await Promise.all([api("/api/labs"), api("/api/reference"), api("/api/study-now"), api("/api/exercises"), api("/api/progress"), api("/api/exam"), api("/api/curriculum"), api("/api/guided-study"), api("/api/study-modules"), api("/api/study-progress"), api("/health")]);
-    state.labs = catalog.labs;
-    state.sections = catalog.sections || [];
-    initializeSections();
-    state.reference = reference;
-    state.exerciseChoices = exercises.exercises;
-    state.curriculum = curriculum;
+    const [studyModules, studyProgress, deployment] = await Promise.all([api("/api/study-modules"), api("/api/study-progress"), api("/health")]);
     state.studyModules = studyModules;
     state.studyProgress = studyProgress;
     document.querySelector("#deployment-metadata").textContent = deployment.commit ? `${deployment.commit.slice(0, 7)} · ${deployment.deployed_at || "deployment time unavailable"}` : "Local development build";
-    state.guided = guided;
-    state.progress = progress;
-    document.querySelector("#practice-choice").replaceChildren(...state.exerciseChoices.map(choice => new Option(`${choice.title} · ${choice.mode}`, choice.id)));
-    renderProgress(progress);
-    renderExercise(exercise);
     renderDashboard();
-    renderCurriculumWorkspace();
-    renderGuidedStudy();
-    if (exam.active) renderExam(exam.active);
-    labSelect.replaceChildren(...state.labs.map((lab) => {
-      const option = document.createElement("option");
-      option.value = lab.id;
-      option.textContent = lab.title;
-      return option;
-    }));
-    renderReference("");
-    let lastLab;
-    try { lastLab = localStorage.getItem("arista-last-lab"); } catch {}
-    await startSession(state.labs.find(l => l.id === lastLab)?.id || state.labs[0].id);
+    renderSourceCurriculum();
+    setConnection("ready", "Curriculum ready");
   } catch (error) {
-    setConnection("error", "Simulator unavailable");
-    appendLine(error.message, "error-line");
-    input.disabled = true;
+    setConnection("error", "Curriculum unavailable");
+    document.querySelector("#readiness-copy").textContent = error.message;
+    document.querySelector("#topic-detail").replaceChildren(Object.assign(document.createElement("p"), { className: "empty-state", textContent: error.message }));
   }
 }
 
-const MODE_LABELS = {learn: "Concept knowledge", recall: "Recall", analyze: "Analysis", configure: "Configuration", verify: "Verification", troubleshoot: "Troubleshooting"};
-const PRIORITY_SCORE = {very_high: 4, high: 3, medium: 2, low: 1};
-
-function average(values) { return values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : null; }
-
-function topicMap() {
-  const map = new Map();
-  for (const section of state.curriculum?.sections || []) for (const domain of section.domains) for (const topic of domain.topics) map.set(topic.id, {...topic, section});
-  return map;
-}
-
 function showView(view) {
-  const dashboard = document.querySelector("#dashboard-view");
-  const curriculum = document.querySelector("#curriculum-view");
-  const study = document.querySelector("#study-view");
-  const workspace = document.querySelector("#lab-workspace");
-  const toWorkspace = !["dashboard", "curriculum", "study"].includes(view);
-  dashboard.hidden = view !== "dashboard";
-  curriculum.hidden = view !== "curriculum";
-  study.hidden = view !== "study";
-  workspace.hidden = !toWorkspace;
-  document.querySelectorAll(".nav-link").forEach(item => item.classList.toggle("is-active", item.dataset.view === view));
-  if (!toWorkspace) window.scrollTo({top: 0, behavior: "smooth"});
-  if (view === "practice") document.querySelector(".study-session")?.setAttribute("open", "");
-  if (view === "exam") { document.querySelector(".study-session")?.setAttribute("open", ""); document.querySelector("#exam-start")?.focus(); }
-  if (view === "progress") document.querySelector("#mastery-summary")?.scrollIntoView({behavior: "smooth", block: "center"});
-}
-
-function currentGuidedTopic() {
-  return state.guided?.topics.find(topic => topic.id === state.selectedGuidedTopic);
-}
-
-async function refreshGuidedStudy(topicId = state.selectedGuidedTopic) {
-  state.guided = await api("/api/guided-study");
-  if (topicId && state.guided.topics.some(topic => topic.id === topicId)) state.selectedGuidedTopic = topicId;
-  renderGuidedStudy();
-}
-
-function renderGuidedStudy() {
-  if (!state.guided?.topics?.length) return;
-  if (!state.selectedGuidedTopic) state.selectedGuidedTopic = state.guided.topics.find(topic => !topic.completion)?.id || state.guided.topics[0].id;
-  const topics = state.guided.topics;
-  const list = document.querySelector("#guided-topic-list");
-  list.replaceChildren(...topics.map((topic, index) => {
-    const button = document.createElement("button"); button.type = "button";
-    const priorComplete = index === 0 || Boolean(topics[index - 1].completion);
-    button.disabled = !priorComplete;
-    button.className = `${topic.id === state.selectedGuidedTopic ? "is-selected " : ""}${topic.completion ? "is-complete" : ""}`;
-    button.textContent = `${topic.completion ? "✓ " : ""}${index + 1}. ${topic.title}`;
-    button.addEventListener("click", () => { state.selectedGuidedTopic = topic.id; state.guidedFeedback = null; renderGuidedStudy(); });
-    return button;
-  }));
-  const topic = currentGuidedTopic();
-  const session = document.querySelector("#guided-session");
-  session.replaceChildren();
-  const label = document.createElement("p"); label.className = "eyebrow"; label.textContent = `${topic.section} · about 10 minutes`;
-  const title = document.createElement("h2"); title.textContent = topic.title;
-  const lesson = document.createElement("p"); lesson.className = "guided-lesson"; lesson.textContent = topic.lesson;
-  const steps = document.createElement("ol"); steps.className = "guided-steps";
-  ["Read the focused explanation.", "Answer every recall check from memory.", "Pass the required application lab.", "Return here to record completion and unlock the next topic."].forEach(text => steps.append(Object.assign(document.createElement("li"), {textContent: text})));
-  const recall = document.createElement("section"); recall.className = "guided-recall"; recall.append(Object.assign(document.createElement("h3"), {textContent: "Recall before you apply"}));
-  topic.questions.forEach((question, index) => {
-    const label = document.createElement("label"); label.textContent = `${index + 1}. ${question.prompt}`;
-    const answer = document.createElement("input"); answer.type = "text"; answer.autocomplete = "off"; answer.dataset.exerciseId = question.id; answer.dataset.variantId = question.variant_id; answer.value = state.guidedAnswers?.[question.id] || ""; answer.addEventListener("input", event => { state.guidedAnswers ||= {}; state.guidedAnswers[question.id] = event.currentTarget.value; });
-    label.append(answer); recall.append(label);
-  });
-  const lab = state.labs.find(item => item.id === topic.lab_id);
-  const application = document.createElement("section"); application.className = "guided-application"; application.append(Object.assign(document.createElement("h3"), {textContent: "Required application"}), Object.assign(document.createElement("p"), {textContent: `Complete and pass: ${lab?.title || topic.lab_id}. This is required to mark the topic complete.`}));
-  const openLab = document.createElement("button"); openLab.type = "button"; openLab.className = "secondary-button"; openLab.textContent = "Open required application lab →"; openLab.addEventListener("click", async () => { showView("lab"); await startSession(topic.lab_id); document.querySelector(".lab-card")?.scrollIntoView({behavior: "smooth", block: "start"}); }); application.append(openLab);
-  const complete = document.createElement("button"); complete.type = "button"; complete.className = "primary-button"; complete.textContent = topic.completion ? "Complete this repeat attempt" : "Check topic completion"; complete.addEventListener("click", async () => {
-    const answers = [...recall.querySelectorAll("input")].map(input => ({exercise_id: input.dataset.exerciseId, variant_id: input.dataset.variantId, answer: input.value}));
-    try { const result = await api(`/api/guided-study/${encodeURIComponent(topic.id)}/complete`, {method:"POST", body: JSON.stringify({answers, session_id: state.sessionId})}); state.guidedFeedback = result; if (result.completed) { state.progress = await api("/api/progress"); renderProgress(state.progress); renderDashboard(); await refreshGuidedStudy(topic.id); } else renderGuidedStudy(); } catch (error) { state.guidedFeedback = {message: error.message}; renderGuidedStudy(); }
-  });
-  const feedback = document.createElement("div"); feedback.className = "guided-feedback";
-  if (state.guidedFeedback) { feedback.textContent = state.guidedFeedback.message; for (const answer of state.guidedFeedback.answers || []) feedback.append(Object.assign(document.createElement("p"), {textContent: `${answer.correct ? "✓" : "Review"}: ${answer.explanation}`})); }
-  const status = document.createElement("p"); status.className = "guided-status"; status.textContent = topic.completion ? `Completed ${topic.completion.completions} time${topic.completion.completions === 1 ? "" : "s"}. Repeat keeps this history.` : "Not completed yet.";
-  const next = topics[topics.findIndex(item => item.id === topic.id) + 1];
-  const continueButton = document.createElement("button"); continueButton.type = "button"; continueButton.className = "secondary-button"; continueButton.textContent = "Continue to next topic →"; continueButton.hidden = !topic.completion || !next;
-  continueButton.addEventListener("click", () => { state.selectedGuidedTopic = next.id; state.guidedAnswers = {}; state.guidedFeedback = null; renderGuidedStudy(); });
-  session.append(label, title, lesson, steps, recall, application, complete, feedback, status, continueButton);
-}
-
-function renderCurriculumWorkspace() {
-  if (state.studyModules) return renderSourceCurriculum();
-  if (!state.curriculum) return;
-  const sections = state.curriculum.sections;
-  if (!state.selectedCurriculumSection || !sections.some(section => section.id === state.selectedCurriculumSection)) state.selectedCurriculumSection = sections.at(-1)?.id || sections[0]?.id;
-  const section = sections.find(item => item.id === state.selectedCurriculumSection);
-  const topics = section.domains.flatMap(domain => domain.topics);
-  if (!state.selectedTopic || !topics.some(topic => topic.id === state.selectedTopic)) state.selectedTopic = topics[0]?.id;
-  const selected = topics.find(topic => topic.id === state.selectedTopic);
-  const skills = state.progress.skills || [];
-  const sectionValues = skills.filter(skill => topics.some(topic => topic.id === skill.topic_id)).map(skill => Number(skill.mastery));
-  const sectionList = document.querySelector("#curriculum-section-list");
-  sectionList.replaceChildren(...sections.map((item, index) => { const button = document.createElement("button"); button.type = "button"; button.className = `curriculum-section-button ${item.id === section.id ? "is-selected" : ""}`; const number = document.createElement("b"); number.textContent = index + 1; const title = document.createElement("span"); title.textContent = item.title.replace(/^L1 · /, ""); button.append(number, title); button.addEventListener("click", () => { state.selectedCurriculumSection = item.id; state.selectedTopic = null; renderCurriculumWorkspace(); }); return button; }));
-  const summary = document.querySelector("#curriculum-section-summary"); summary.replaceChildren(); const eyebrow = document.createElement("p"); eyebrow.className = "eyebrow"; eyebrow.textContent = "Selected section"; const title = document.createElement("h2"); title.textContent = section.title.replace(/^L1 · /, ""); const description = document.createElement("p"); description.textContent = section.description; const status = document.createElement("span"); status.className = "section-status"; const value = average(sectionValues); status.textContent = value === null ? "No skills assessed in this section yet" : `${value}% assessed mastery across ${sectionValues.length} skill signals`; summary.append(eyebrow, title, description, status);
-  const domainList = document.querySelector("#curriculum-domain-list"); domainList.replaceChildren(...section.domains.map(domain => { const card = document.createElement("article"); card.className = "domain-card"; const heading = document.createElement("h3"); heading.textContent = domain.title; card.append(heading); for (const topic of domain.topics) { const button = document.createElement("button"); button.type = "button"; button.textContent = topic.title; button.addEventListener("click", () => { state.selectedTopic = topic.id; renderCurriculumWorkspace(); document.querySelector("#topic-detail").scrollIntoView({behavior:"smooth",block:"nearest"}); }); card.append(button); } return card; }));
-  const detail = document.querySelector("#topic-detail"); detail.replaceChildren(); const topicEyebrow = document.createElement("p"); topicEyebrow.className = "eyebrow"; topicEyebrow.textContent = "Topic readiness by mode"; const topicTitle = document.createElement("h2"); topicTitle.textContent = selected.title; const topicDescription = document.createElement("p"); topicDescription.textContent = selected.description; const modeGrid = document.createElement("div"); modeGrid.className = "mode-grid"; for (const mode of Object.keys(MODE_LABELS)) { const card = document.createElement("article"); card.className = "mode-card"; const label = document.createElement("strong"); label.textContent = MODE_LABELS[mode]; const skill = skills.find(item => item.topic_id === selected.id && item.mode === mode); const result = document.createElement("span"); result.textContent = skill ? `${Math.round(skill.mastery)}% mastery · ${skill.attempts} attempts` : "Not yet assessed"; card.append(label, result); const choice = state.exerciseChoices.find(item => item.topic_id === selected.id && item.mode === mode); if (choice) { const button = document.createElement("button"); button.type = "button"; button.textContent = "Practice →"; button.addEventListener("click", async () => { renderExercise(await api(`/api/study-now?topic_id=${encodeURIComponent(selected.id)}&mode=${encodeURIComponent(mode)}`)); showView("practice"); document.querySelector(".study-session")?.scrollIntoView({behavior:"smooth",block:"start"}); }); card.append(button); } else { const planned = document.createElement("small"); planned.className = "planned"; planned.textContent = "Practice content not yet available"; card.append(planned); } modeGrid.append(card); } detail.append(topicEyebrow, topicTitle, topicDescription, modeGrid);
-}
-
-function renderSourceCurriculum() {
-  const sections = state.studyModules.sections;
-  if (!state.selectedCurriculumSection || !sections.some(section => section.id === state.selectedCurriculumSection)) state.selectedCurriculumSection = sections[0].id;
-  const section = sections.find(item => item.id === state.selectedCurriculumSection);
-  if (!state.selectedModule || !section.modules.some(module => module.id === state.selectedModule)) state.selectedModule = section.modules[0].id;
-  const selected = section.modules.find(module => module.id === state.selectedModule);
-  const sectionList = document.querySelector("#curriculum-section-list");
-  sectionList.replaceChildren(...sections.map((item, index) => {
-    const button = document.createElement("button"); button.type = "button"; button.className = `curriculum-section-button ${item.id === section.id ? "is-selected" : ""}`;
-    button.append(Object.assign(document.createElement("b"), {textContent: index + 1}), Object.assign(document.createElement("span"), {textContent: item.title}));
-    button.addEventListener("click", () => { state.selectedCurriculumSection = item.id; state.selectedModule = null; renderSourceCurriculum(); }); return button;
-  }));
-  const completed = section.modules.filter(module => moduleCompletion(module) === 100).length;
-  const summary = document.querySelector("#curriculum-section-summary"); summary.replaceChildren(Object.assign(document.createElement("p"), {className:"eyebrow", textContent:"Authoritative Drive curriculum"}), Object.assign(document.createElement("h2"), {textContent:section.title}), Object.assign(document.createElement("p"), {textContent:`${section.modules.length} lessons and labs · ${completed} complete. Choose any module; numeric order is recommended, not required.`}));
-  const moduleList = document.querySelector("#curriculum-domain-list"); const card = document.createElement("article"); card.className = "domain-card module-index"; card.append(Object.assign(document.createElement("h3"), {textContent:"Lessons and labs"}));
-  const normalizedSearch = state.curriculumSearch.trim().toLowerCase();
-  const visibleModules = section.modules.filter(module => !normalizedSearch || `${module.title} ${module.markdown}`.toLowerCase().includes(normalizedSearch));
-  if (!visibleModules.length) card.append(Object.assign(document.createElement("p"), {className:"empty-state", textContent:"No modules in this section match your search."}));
-  visibleModules.forEach(module => { const button = document.createElement("button"); button.type="button"; button.className = `${module.id === selected.id ? "is-selected " : ""}${moduleCompletion(module) === 100 ? "is-complete" : ""}`; button.textContent=`${moduleCompletion(module) === 100 ? "✓ " : ""}${module.number}. ${module.title}${module.kind === "lab" ? " · Lab" : ""}`; button.addEventListener("click", () => { state.selectedModule=module.id; renderSourceCurriculum(); document.querySelector("#topic-detail").scrollIntoView({behavior:"smooth",block:"start"}); }); card.append(button); }); moduleList.replaceChildren(card);
-  const detail = document.querySelector("#topic-detail");
-  const detailLabel = document.createElement("p"); detailLabel.className = "eyebrow"; detailLabel.textContent = `${section.title} · ${selected.kind}`;
-  const detailTitle = document.createElement("h2"); detailTitle.textContent = `${selected.number}. ${selected.title}`;
-  const meter = document.createElement("div"); meter.className = "module-progress"; meter.innerHTML = `<span style="width:${moduleCompletion(selected)}%"></span>`;
-  const meterLabel = document.createElement("p"); meterLabel.className = "module-progress-label"; meterLabel.textContent = selected.activities ? `${moduleCompletion(selected)}% complete across Learn, Flashcards, Quiz, Exercise, and Mastery` : "Interactive build pending for this section";
-  detail.replaceChildren(detailLabel, detailTitle, meter, meterLabel);
-  if (selected.activities) detail.append(renderInteractiveModule(selected, section));
-  else detail.append(renderMarkdownContent(selected.markdown), Object.assign(document.createElement("p"), {className:"planned", textContent:"This section is available for reference. Its full interactive build is not yet complete."}));
+  document.querySelector("#dashboard-view").hidden = view !== "dashboard";
+  document.querySelector("#curriculum-view").hidden = view !== "curriculum";
+  document.querySelectorAll(".nav-link").forEach((item) => item.classList.toggle("is-active", item.dataset.view === view));
+  document.querySelector(".app-sidebar").classList.remove("is-open");
+  document.querySelector("#mobile-menu").setAttribute("aria-expanded", "false");
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function emptyModuleProgress(module) {
-  return {learn_reviewed:false, flashcards_revealed:[], quiz_answers:module.activities.quiz.map(() => ""), quiz_correct:module.activities.quiz.map(() => false), practical_complete:false, practical_notes:"", mastery_checked:[]};
+  return { learn_reviewed: false, flashcards_revealed: [], quiz_answers: module.activities.quiz.map(() => ""), quiz_correct: module.activities.quiz.map(() => false), practical_complete: false, practical_notes: "", mastery_checked: [] };
 }
 
 function moduleProgress(module) {
   if (!module.activities) return null;
-  const empty=emptyModuleProgress(module); const saved=state.studyProgress[module.id] || {};
-  for (const key of Object.keys(empty)) if (key in saved) empty[key]=saved[key];
-  return empty;
+  const progress = emptyModuleProgress(module);
+  const saved = state.studyProgress[module.id] || {};
+  for (const key of Object.keys(progress)) if (key in saved) progress[key] = saved[key];
+  return progress;
 }
 
 function moduleCompletion(module) {
   if (!module.activities) return 0;
-  const progress = moduleProgress(module); const activities = module.activities;
+  const progress = moduleProgress(module);
+  const activities = module.activities;
   const earned = Number(progress.learn_reviewed) + Number(progress.flashcards_revealed.length >= activities.flashcards.length) + Number(progress.quiz_correct.filter(Boolean).length >= activities.quiz.length) + Number(progress.practical_complete) + Number(progress.mastery_checked.length >= activities.mastery.length);
   return earned * 20;
 }
 
-async function saveModuleProgress(module, progress, rerender = true) {
-  state.studyProgress[module.id] = progress; if (rerender) renderSourceCurriculum();
-  try { state.studyProgress[module.id] = await api("/api/study-progress", {method:"POST", body:JSON.stringify({module_id:module.id, state:progress})}); }
-  catch (error) { alert(`Progress was not saved: ${error.message}`); }
+function allModules() {
+  return state.studyModules?.sections.flatMap((section) => section.modules.map((module) => ({ section, module }))) || [];
 }
 
-function renderInteractiveModule(module, section) {
-  const activities = module.activities; const progress = moduleProgress(module); const wrapper = document.createElement("div"); wrapper.className = "interactive-module";
-  const learn = activityPanel("Learn", "Read the supplied lesson before marking it reviewed."); learn.id = "module-learn"; learn.append(renderMarkdownContent(activities.learn));
-  const learnButton = actionButton(progress.learn_reviewed ? "✓ Learn reviewed" : "Mark Learn reviewed", () => { progress.learn_reviewed = !progress.learn_reviewed; saveModuleProgress(module, progress); }); learn.append(learnButton);
-  const flashcards = activityPanel("Flashcards", "Answers stay hidden until you reveal each card.");
-  activities.flashcards.forEach((card, index) => { const revealed = progress.flashcards_revealed.includes(index); const item=document.createElement("button"); item.type="button"; item.className=`flashcard ${revealed ? "is-revealed" : ""}`; item.append(Object.assign(document.createElement("strong"), {textContent:card.question}), Object.assign(document.createElement("span"), {textContent:revealed ? card.answer : "Reveal answer"})); item.addEventListener("click", () => { if (!progress.flashcards_revealed.includes(index)) progress.flashcards_revealed.push(index); saveModuleProgress(module, progress); }); flashcards.append(item); });
-  const quiz = activityPanel("Knowledge Quiz", "Answer from memory. Check your response against the source lesson, then mark it correct or retry it.");
-  activities.quiz.forEach((question, index) => { const item=document.createElement("article"); item.className=`quiz-item ${progress.quiz_correct[index] ? "is-correct" : ""}`; item.append(Object.assign(document.createElement("h4"), {textContent:`${index + 1}. ${question}`})); const answer=document.createElement("textarea"); answer.rows=3; answer.value=progress.quiz_answers[index] || ""; answer.placeholder="Write your answer before checking the source…"; const review=document.createElement("details"); review.className="quiz-source-review"; review.append(Object.assign(document.createElement("summary"), {textContent:"Check against the source Learn content"}), renderMarkdownContent(activities.learn)); const controls=document.createElement("div"); controls.className="quiz-controls"; const correct=actionButton("My answer is correct", () => { progress.quiz_answers[index]=answer.value; progress.quiz_correct[index]=true; saveModuleProgress(module, progress); }); correct.disabled=!answer.value.trim(); answer.addEventListener("input", () => { progress.quiz_answers[index]=answer.value; correct.disabled=!answer.value.trim(); }); answer.addEventListener("change", () => saveModuleProgress(module, progress, false)); controls.append(correct, actionButton("Retry this question", () => { progress.quiz_correct[index]=false; saveModuleProgress(module, progress); })); item.append(answer, review, controls); quiz.append(item); });
-  const practical = activityPanel("Practical Exercise", "Complete the supplied task and keep optional notes as evidence."); practical.append(renderMarkdownContent(activities.practical)); const notes=document.createElement("textarea"); notes.rows=4; notes.placeholder="Optional exercise notes…"; notes.value=progress.practical_notes; notes.addEventListener("input", () => { progress.practical_notes=notes.value; }); notes.addEventListener("change", () => saveModuleProgress(module, progress, false)); const practicalLabel=document.createElement("label"); practicalLabel.className="mastery-item"; const practicalCheck=document.createElement("input"); practicalCheck.type="checkbox"; practicalCheck.checked=progress.practical_complete; practicalCheck.addEventListener("change", () => { progress.practical_notes=notes.value; progress.practical_complete=practicalCheck.checked; saveModuleProgress(module, progress); }); practicalLabel.append(practicalCheck, document.createTextNode("I completed this practical exercise")); practical.append(notes, practicalLabel);
-  const mastery = activityPanel("Mastery Check", "Check each outcome only when you can perform it without relying on the lesson."); activities.mastery.forEach((text,index) => { const label=document.createElement("label"); label.className="mastery-item"; const check=document.createElement("input"); check.type="checkbox"; check.checked=progress.mastery_checked.includes(index); check.addEventListener("change", () => { progress.mastery_checked = check.checked ? [...new Set([...progress.mastery_checked,index])] : progress.mastery_checked.filter(item => item !== index); saveModuleProgress(module, progress); }); label.append(check,document.createTextNode(text)); mastery.append(label); });
-  const navigation=document.createElement("nav"); navigation.className="module-navigation"; const index=section.modules.findIndex(item => item.id === module.id); if (index>0) navigation.append(actionButton("← Previous module", () => { state.selectedModule=section.modules[index-1].id; renderSourceCurriculum(); window.scrollTo({top:0,behavior:"smooth"}); })); if (index<section.modules.length-1) navigation.append(actionButton("Next module →", () => { state.selectedModule=section.modules[index+1].id; renderSourceCurriculum(); window.scrollTo({top:0,behavior:"smooth"}); }));
-  wrapper.append(learn, flashcards, quiz, practical, mastery, navigation); return wrapper;
-}
-
-function activityPanel(title, description) { const panel=document.createElement("section"); panel.className="module-activity"; panel.append(Object.assign(document.createElement("h3"), {textContent:title}), Object.assign(document.createElement("p"), {className:"activity-guide", textContent:description})); return panel; }
-function actionButton(label, handler) { const button=document.createElement("button"); button.type="button"; button.className="secondary-button"; button.textContent=label; button.addEventListener("click", handler); return button; }
-
-function appendInlineMarkdown(element, text) {
-  const parts=text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g); for (const part of parts) { if (part.startsWith("`") && part.endsWith("`")) element.append(Object.assign(document.createElement("code"), {textContent:part.slice(1,-1)})); else if (part.startsWith("**") && part.endsWith("**")) element.append(Object.assign(document.createElement("strong"), {textContent:part.slice(2,-2)})); else element.append(document.createTextNode(part)); }
-}
-
-function renderMarkdownContent(markdown) {
-  const content=document.createElement("div"); content.className="module-markdown"; const lines=markdown.split("\n"); let list=null;
-  for (let index=0; index<lines.length; index++) { const line=lines[index];
-    if (line.startsWith("```")) { const language=line.slice(3); const values=[]; while (++index<lines.length && !lines[index].startsWith("```")) values.push(lines[index]); const pre=document.createElement("pre"); const code=document.createElement("code"); code.className=language ? `language-${language}` : ""; code.textContent=values.join("\n"); pre.append(code); content.append(pre); list=null; continue; }
-    if (line.startsWith("|") && lines[index+1]?.match(/^\|[-:| ]+\|$/)) { const table=document.createElement("table"); const header=document.createElement("tr"); line.split("|").slice(1,-1).forEach(value => { const cell=document.createElement("th"); appendInlineMarkdown(cell,value.trim()); header.append(cell); }); const head=document.createElement("thead"); head.append(header); table.append(head); index++; const body=document.createElement("tbody"); while (lines[index+1]?.startsWith("|")) { index++; const row=document.createElement("tr"); lines[index].split("|").slice(1,-1).forEach(value => { const cell=document.createElement("td"); appendInlineMarkdown(cell,value.trim()); row.append(cell); }); body.append(row); } table.append(body); content.append(table); list=null; continue; }
-    const heading=line.match(/^(#{1,3})\s+(.+)$/); const item=line.match(/^[-*]\s+(.+)$/); const ordered=line.match(/^\d+\.\s+(.+)$/);
-    if (heading) { list=null; const element=document.createElement(`h${Math.min(heading[1].length+2,5)}`); appendInlineMarkdown(element,heading[2]); content.append(element); }
-    else if (item || ordered) { const tag=ordered ? "OL" : "UL"; if (!list || list.tagName!==tag) { list=document.createElement(tag.toLowerCase()); content.append(list); } const entry=document.createElement("li"); appendInlineMarkdown(entry,(item||ordered)[1]); list.append(entry); }
-    else if (line.trim()) { list=null; const paragraph=document.createElement("p"); appendInlineMarkdown(paragraph,line.trim()); content.append(paragraph); }
-  } return content;
-}
-
-function startRecommendedPractice() {
-  showView("practice");
-  document.querySelector(".study-session")?.scrollIntoView({behavior: "smooth", block: "start"});
-  document.querySelector("#exercise-answer")?.focus();
-}
-
-function startGuidedStudy(topicId = null) {
-  if (topicId) state.selectedGuidedTopic = topicId;
-  state.guidedAnswers = {};
-  state.guidedFeedback = null;
-  renderGuidedStudy();
-  document.querySelector("#dashboard-view").hidden = true;
-  document.querySelector("#curriculum-view").hidden = true;
-  document.querySelector("#lab-workspace").hidden = true;
-  document.querySelector("#study-view").hidden = false;
-  document.querySelectorAll(".nav-link").forEach(item => item.classList.toggle("is-active", item.dataset.view === "study"));
-  window.scrollTo({top: 0, behavior: "smooth"});
+function openModule(section, module) {
+  state.selectedCurriculumSection = section.id;
+  state.selectedModule = module.id;
+  state.curriculumSearch = "";
+  document.querySelector("#global-search").value = "";
+  renderSourceCurriculum();
+  showView("curriculum");
 }
 
 function renderDashboard() {
-  if (!state.curriculum) return;
-  const skills = state.progress.skills || [];
-  const byKey = new Map(skills.map(skill => [`${skill.topic_id}:${skill.mode}`, skill]));
-  const dimensions = Object.keys(MODE_LABELS).map(mode => ({mode, value: average(skills.filter(skill => skill.mode === mode).map(skill => Number(skill.mastery)))}));
-  const overall = state.progress.readiness?.overall ?? average(skills.map(skill => Number(skill.mastery)));
-  const assessed = skills.length;
-  const ring = document.querySelector("#readiness-ring");
-  ring.style.setProperty("--readiness", `${overall || 0}%`);
-  document.querySelector("#readiness-value").textContent = overall === null ? "—" : `${overall}%`;
-  document.querySelector("#readiness-copy").textContent = overall === null ? "No mastery has been assessed yet. Start with a focused practice to establish a real baseline." : `${state.progress.readiness?.coverage ?? 0}% of available skill modes assessed. Review the dimensions below so one score never hides a weakness.`;
-  document.querySelector("#dashboard-reason").textContent = state.exercise?.reason || "Your next recommended practice";
-
-  const dimensionList = document.querySelector("#dimension-list");
-  dimensionList.replaceChildren(...dimensions.map(item => {
-    const row = document.createElement("div"); row.className = "dimension-row";
-    const label = document.createElement("span"); label.textContent = MODE_LABELS[item.mode];
-    const meter = document.createElement("div"); meter.className = "meter"; const fill = document.createElement("span"); fill.style.width = `${item.value || 0}%`; meter.append(fill);
-    const value = document.createElement("em"); value.textContent = item.value === null ? "—" : `${item.value}%`;
-    row.append(label, meter, value); return row;
-  }));
-
-  const topics = topicMap();
-  const attention = state.exerciseChoices.map(choice => {
-    const skill = byKey.get(`${choice.topic_id}:${choice.mode}`); const topic = topics.get(choice.topic_id);
-    const mastery = skill ? Number(skill.mastery) : 0; const errors = skill ? Number(skill.recent_error_rate) : 0;
-    return {...choice, topic, mastery, errors, score: (100 - mastery) * PRIORITY_SCORE[choice.priority] * (1 + errors)};
-  }).sort((a, b) => b.score - a.score).slice(0, 5);
-  const attentionList = document.querySelector("#attention-list");
-  attentionList.replaceChildren(...attention.map(item => {
-    const row = document.createElement("div"); row.className = `attention-item ${item.mastery < 50 ? "low" : ""}`;
-    const title = document.createElement("strong"); title.textContent = item.title;
-    const meta = document.createElement("span"); meta.textContent = `${MODE_LABELS[item.mode]} · ${item.mastery ? `${item.mastery}% mastery` : "not yet assessed"} · ${item.priority.replace("_", " ")} priority`;
-    const button = document.createElement("button"); button.type = "button"; button.textContent = "Practice"; button.addEventListener("click", async () => { renderExercise(await api(`/api/study-now?topic_id=${encodeURIComponent(item.topic_id)}&mode=${encodeURIComponent(item.mode)}`)); startRecommendedPractice(); });
-    row.append(title, meta, button); return row;
-  }));
-
-  const activities = [...(state.progress.recent_activity || [])].slice(0, 5);
-  const activityList = document.querySelector("#activity-list");
-  if (!activities.length) activityList.replaceChildren(Object.assign(document.createElement("p"), {className: "empty-state", textContent: "Your completed practice and lab history will appear here. Start Study Now to create your first activity."}));
-  else activityList.replaceChildren(...activities.map(item => { const row = document.createElement("div"); row.className = "activity-item"; const title = document.createElement("strong"); title.textContent = topics.get(item.title)?.title || item.title; const detail = document.createElement("span"); detail.textContent = `${item.detail}${item.score === null ? "" : ` · ${Math.round(item.score)}%`} · ${item.occurred_at}`; row.append(title, detail); return row; }));
-
-  const cards = document.querySelector("#curriculum-cards");
-  if (state.studyModules) {
-    cards.replaceChildren(...state.studyModules.sections.map((section, index) => {
-      const card = document.createElement("article"); card.className = "curriculum-card";
-      const number = document.createElement("b"); number.textContent = String(index + 1);
-      const title = document.createElement("h3"); title.textContent = section.title;
-      const description = document.createElement("p"); description.textContent = `${section.modules.length} supplied lessons and labs`;
-      const status = document.createElement("span"); status.textContent = "Choose any module";
-      const button = document.createElement("button"); button.type = "button"; button.textContent = "Open section →";
-      button.addEventListener("click", () => { state.selectedCurriculumSection = section.id; state.selectedModule = null; renderCurriculumWorkspace(); showView("curriculum"); });
-      card.append(number, title, description, status, button); return card;
-    }));
-    return;
-  }
-  cards.replaceChildren(...state.curriculum.sections.map((section, index) => {
-    const topicIds = section.domains.flatMap(domain => domain.topics.map(topic => topic.id));
-    const values = skills.filter(skill => topicIds.includes(skill.topic_id)).map(skill => Number(skill.mastery)); const readiness = state.progress.readiness?.sections?.[section.id]; const value = readiness?.mastery ?? average(values);
-    const card = document.createElement("article"); card.className = "curriculum-card";
-    const number = document.createElement("b"); number.textContent = String(index + 1); const title = document.createElement("h3"); title.textContent = section.title.replace(/^L1 · /, ""); const description = document.createElement("p"); description.textContent = section.domains.map(domain => domain.title).slice(0, 3).join(" · "); const status = document.createElement("span"); status.textContent = value === null ? "Not yet assessed" : `${value}% mastery · ${readiness?.coverage ?? 0}% assessed`; const button = document.createElement("button"); button.type = "button"; button.textContent = "Continue →"; button.addEventListener("click", () => { state.selectedCurriculumSection = section.id; state.selectedTopic = null; renderCurriculumWorkspace(); showView("curriculum"); }); card.append(number, title, description, status, button); return card;
-  }));
-}
-
-function renderReference(query) {
-  const normalized = query.trim().toLowerCase();
-  const groups = state.reference.categories.map((category) => ({
-    ...category,
-    commands: category.commands.filter((item) =>
-      `${category.title} ${item.command} ${item.description}`.toLowerCase().includes(normalized)
-    ),
-  })).filter((category) => category.commands.length);
-
-  referenceGroups.replaceChildren(...groups.map((category) => {
-    const section = document.createElement("section");
-    section.className = "reference-group";
-    const heading = document.createElement("h3");
-    heading.textContent = category.title;
-    const list = document.createElement("div");
-    list.className = "reference-list";
-    list.replaceChildren(...category.commands.map((item) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "command-chip";
-      button.dataset.command = item.command;
-      const command = document.createElement("code");
-      command.textContent = item.command;
-      const description = document.createElement("span");
-      description.textContent = item.description;
-      button.append(command, description);
-      return button;
-    }));
-    section.append(heading, list);
-    return section;
-  }));
-  document.querySelector("#reference-empty").hidden = groups.length !== 0;
-}
-
-document.querySelector("#reference-open").addEventListener("click", () => {
-  referenceSearch.value = "";
-  renderReference("");
-  referenceDialog.showModal();
-  referenceSearch.focus();
-});
-
-document.querySelector("#reference-close").addEventListener("click", () => referenceDialog.close());
-referenceSearch.addEventListener("input", () => renderReference(referenceSearch.value));
-referenceGroups.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-command]");
-  if (!button) return;
-  input.value = button.dataset.command;
-  referenceDialog.close();
-  input.disabled = false;
-  input.focus();
-  const placeholder = input.value.match(/<[^>]+>/);
-  if (placeholder) input.setSelectionRange(placeholder.index, placeholder.index + placeholder[0].length);
-});
-
-labSelect.addEventListener("change", async () => {
-  const requestedLab = labSelect.value;
-  if (state.busy) {
-    labSelect.value = state.labId;
-    return;
-  }
-  await startSession(requestedLab);
-});
-
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  if (state.busy || !state.sessionId || input.disabled) return;
-  state.busy = true;
-  labSelect.disabled = true;
-  const command = input.value;
-  input.value = "";
-  state.history.push(command);
-  state.historyIndex = state.history.length;
-  state.draft = "";
-  appendCommand(state.prompt, command);
-  input.disabled = true;
-
-  try {
-    const result = await api(`/api/sessions/${state.sessionId}/commands`, {
-      method: "POST",
-      body: JSON.stringify({ command }),
-    });
-    if (result.output) appendLine(result.output, result.output.startsWith("%") ? "error-line" : "");
-    state.prompt = result.prompt;
-    promptLabel.textContent = state.prompt;
-    renderCampus(result.campus, result.active);
-    if (result.closed) {
-      appendLine("Session closed. Reset the lab to continue.", "welcome");
-    } else {
-      input.disabled = false;
-      input.focus();
-    }
-  } catch (error) {
-    appendLine(error.message, "error-line");
-    input.disabled = false;
-    input.focus();
-  } finally {
-    state.busy = false;
-    labSelect.disabled = false;
-  }
-});
-
-input.addEventListener("keydown", async (event) => {
-  if ((event.key === "?" || event.key === "Tab") && state.sessionId && !state.busy) {
-    event.preventDefault();
-    state.busy = true;
-    labSelect.disabled = true;
-    input.disabled = true;
-    try {
-      const result = await api(`/api/sessions/${state.sessionId}/help`, {method: "POST", body: JSON.stringify({command: input.value})});
-      if (event.key === "Tab" && result.matches.length === 1) input.value = result.completed;
-      else appendLine(result.output);
-    } catch (error) { appendLine(error.message, "error-line"); }
-    finally { state.busy = false; labSelect.disabled = false; input.disabled = false; input.focus(); }
-  } else if (event.key === "ArrowUp" && state.history.length) {
-    event.preventDefault();
-    if (state.historyIndex === state.history.length) state.draft = input.value;
-    state.historyIndex = Math.max(0, state.historyIndex - 1);
-    input.value = state.history[state.historyIndex];
-  } else if (event.key === "ArrowDown" && state.history.length) {
-    event.preventDefault();
-    state.historyIndex = Math.min(state.history.length, state.historyIndex + 1);
-    input.value = state.historyIndex === state.history.length ? state.draft : state.history[state.historyIndex];
-  } else if (event.ctrlKey && event.key.toLowerCase() === "l") {
-    event.preventDefault();
-    output.replaceChildren();
-  }
-});
-
-document.querySelector("#exercise-hints").addEventListener("toggle", event => {
-  if (event.currentTarget.open) state.hintsUsed = Math.max(1, state.hintsUsed);
-});
-
-document.querySelector("#exercise-form").addEventListener("submit", async event => {
-  event.preventDefault();
-  if (!state.exercise) return;
-  const button = document.querySelector("#exercise-submit");
-  button.disabled = true;
-  const result = document.querySelector("#exercise-result");
-  try {
-    const answer = document.querySelector("#exercise-answer").value;
-    const attempt = await api(`/api/exercises/${state.exercise.id}/attempts`, {
-      method: "POST",
-      body: JSON.stringify({variant_id: state.exercise.variant_id, answer, hints_used: state.hintsUsed}),
-    });
-    result.className = `exercise-result ${attempt.correct ? "correct" : "incorrect"}`;
-    result.textContent = `${attempt.correct ? "Correct." : "Not quite."} ${attempt.explanation} Mastery: ${attempt.progress.mastery}% (${attempt.progress.attempts} attempt${attempt.progress.attempts === 1 ? "" : "s"}).`;
-    const next = await api("/api/study-now");
-    state.progress = await api("/api/progress");
-    renderProgress(state.progress);
-    renderDashboard();
-    renderCurriculumWorkspace();
-    window.setTimeout(() => renderExercise(next), 900);
-  } catch (error) {
-    result.className = "exercise-result incorrect";
-    result.textContent = error.message;
-    button.disabled = false;
-  }
-});
-
-document.querySelector("#practice-picker").addEventListener("submit", async event => {
-  event.preventDefault();
-  const choice = state.exerciseChoices.find(item => item.id === document.querySelector("#practice-choice").value);
-  if (!choice) return;
-  try {
-    renderExercise(await api(`/api/study-now?topic_id=${encodeURIComponent(choice.topic_id)}&mode=${encodeURIComponent(choice.mode)}`));
-  } catch (error) { document.querySelector("#exercise-result").textContent = error.message; }
-});
-
-document.querySelector("#supporting-lab").addEventListener("click", async event => {
-  const labId = event.currentTarget.dataset.labId;
-  if (!labId || state.busy) return;
-  await startSession(labId);
-  document.querySelector(".lab-card").scrollIntoView({behavior: "smooth", block: "start"});
-});
-
-document.querySelector("#clear-terminal").addEventListener("click", () => {
-  output.replaceChildren();
-  input.focus();
-});
-
-document.querySelector("#check-work").addEventListener("click", async () => {
-  if (state.busy || !state.sessionId) return;
-  state.busy = true;
-  labSelect.disabled = true;
-  const button = document.querySelector("#check-work");
-  button.disabled = true;
-  try {
-    const grade = await api(`/api/sessions/${state.sessionId}/grade`, {
-      method: "POST",
-      body: "{}",
-    });
-    const panel = document.querySelector("#grade-panel");
-    panel.hidden = false;
-    panel.classList.toggle("complete", grade.passed);
-    document.querySelector("#grade-title").textContent = grade.passed ? "Lab complete" : "Keep configuring";
-    const summary = document.querySelector("#grade-summary");
-    summary.hidden = !grade.passed;
-    if (grade.passed) summary.textContent = `Repair verified: ${grade.passed_count}/${grade.total_count} state checks passed${grade.process ? `; ${grade.process_passed_count}/${grade.process_total_count} troubleshooting evidence checks recorded.` : "."}`;
-    document.querySelector("#progress-label").textContent = `${grade.passed_count} / ${grade.total_count}`;
-    const results = document.querySelector("#grade-results");
-    results.replaceChildren(...grade.results.map((result) => {
-      const item = document.createElement("li");
-      item.className = result.passed ? "pass" : "";
-      item.textContent = `${result.passed ? "✓" : "○"} ${result.label}`;
-      return item;
-    }));
-    const review = document.querySelector("#troubleshooting-review");
-    review.hidden = !grade.passed;
-    if (grade.passed) {
-      const commands = state.history.filter(command => command.trim()).slice(-18).join("\n") || "No command history retained.";
-      const details = grade.review;
-      const makeParagraph = (label, text) => Object.assign(document.createElement("p"), {textContent: `${label}: ${text}`});
-      const path = document.createElement("ol");
-      details.path.forEach(step => path.append(Object.assign(document.createElement("li"), {textContent: step})));
-      review.replaceChildren(
-        Object.assign(document.createElement("h4"), {textContent:"Troubleshooting path review"}),
-        makeParagraph("Symptom", details.symptom),
-        makeParagraph("Root cause", details.root_cause),
-        makeParagraph("Avoid", details.avoid),
-        Object.assign(document.createElement("p"), {textContent:"Recommended investigation and repair path:"}),
-        path,
-        Object.assign(document.createElement("p"), {textContent:"Your command trail:"}),
-        Object.assign(document.createElement("code"), {textContent:commands})
-      );
-    }
-    if (grade.process) appendLine(`Troubleshooting evidence: ${grade.process_passed_count} / ${grade.process_total_count}`, "welcome");
-  } catch (error) {
-    appendLine(error.message, "error-line");
-  } finally {
-    button.disabled = false;
-    state.busy = false;
-    labSelect.disabled = false;
-  }
-});
-
-document.querySelector("#reset-lab").addEventListener("click", async () => {
-  if (state.busy || !state.sessionId || !window.confirm("Reset this entire lab and discard its saved configuration?")) return;
-  state.busy = true;
-  labSelect.disabled = true;
-  try {
-    const result = await api(`/api/sessions/${state.sessionId}/reset`, {
-      method: "POST",
-      body: "{}",
-    });
-    state.prompt = result.prompt;
-    renderCampus(result.campus, result.active);
-    state.history = [];
-    state.historyIndex = 0;
-    promptLabel.textContent = state.prompt;
-    output.replaceChildren();
-    appendLine("Lab reset. The switch is back at its starting state.", "welcome");
-    document.querySelector("#grade-panel").hidden = true;
-    document.querySelector("#progress-label").textContent = "Not checked";
-    input.disabled = false;
-    input.focus();
-  } catch (error) {
-    appendLine(error.message, "error-line");
-  } finally {
-    state.busy = false;
-    labSelect.disabled = false;
-  }
-});
-
-function renderCampus(campus, active) {
-  document.querySelector("#campus-panel").hidden = !campus;
-  document.querySelector("#device-title").textContent = active || "Training switch";
-  if (!campus) return;
-  document.querySelector("#topology-title").textContent = campus.title || "College access network";
-  document.querySelector("#topology-subtitle").textContent = campus.subtitle || "Fictional campus · Layer 2";
-  document.querySelector("#topology-limits").textContent = campus.limits || "Same-subnet traffic on this fixed, loop-free topology is simulated. Routing, STP convergence, LACP, MLAG, ACL enforcement, and traffic timing are not modeled. Learning tables clear on configuration changes and server restart. Switch ARP stays empty because no Layer 3 interface participates.";
-  document.querySelector("#topology-nodes").replaceChildren(...campus.switches.map(name => {
-    const button = document.createElement("button");
-    button.className = "node";
-    button.type = "button";
-    button.dataset.device = name;
-    button.setAttribute("aria-pressed", String(name === active));
-    button.append(name);
-    button.addEventListener("click", () => selectCampusDevice(name));
-    return button;
-  }));
-  document.querySelector("#topology-links").replaceChildren(...campus.links.map(link => {
-    const label = document.createElement("span");
-    label.textContent = `${link.a} ${link.ap.replace("Ethernet", "Et")} ↔ ${link.b} ${link.bp.replace("Ethernet", "Et")} · ${link.up ? "up" : "down"}`;
-    return label;
-  }));
-  const evidence = document.querySelector("#routing-evidence");
-  evidence.hidden = !campus.devices;
-  if (campus.devices) {
-    document.querySelector("#routing-evidence-cards").replaceChildren(...campus.devices.map(device => {
-      const card = document.createElement("article");
-      card.className = "routing-evidence-card";
-      const heading = document.createElement("h4");
-      heading.textContent = device.name;
-      const interfaces = document.createElement("p");
-      interfaces.textContent = `Interfaces: ${device.interfaces.map(item => `${item.name.replace("Ethernet", "Et")} ${item.addresses.join(", ")} (${item.up ? "up" : "down"})`).join(" · ") || "none"}`;
-      const routes = document.createElement("p");
-      routes.textContent = `Static routes: ${device.routes.map(route => `${route.prefix} via ${route.next_hop}`).join(" · ") || "none"}`;
-      const decisions = document.createElement("p");
-      decisions.textContent = `Selected: ${device.decisions.map(route => `${route.destination} → ${route.source} ${route.prefix} (${route.reason})`).join(" · ") || "no remote route"}`;
-      card.replaceChildren(heading, interfaces, routes, decisions);
-      return card;
-    }));
-  }
-  const hosts = [...campus.hosts].sort((a,b) => a.port.localeCompare(b.port) || a.switch.localeCompare(b.switch));
-  document.querySelector("#host-list").replaceChildren(...hosts.map(h => {
-    const p = document.createElement("p");
-    p.textContent = `${h.id} · ${h.address} · ${h.port}`;
-    return p;
-  }));
-  for (const id of ["ping-source", "ping-destination"]) {
-    const select = document.getElementById(id);
-    const previous = select.value;
-    select.replaceChildren(...campus.hosts.map(h => new Option(h.id, h.id)));
-    select.value = campus.hosts.some(h => h.id === previous) ? previous : campus.hosts[id === "ping-source" ? 0 : 1]?.id;
-  }
-  document.querySelector("#host-arp").textContent = campus.hosts.map(h => `${h.id}: ${Object.entries(h.arp).map(([ip, mac]) => `${ip} → ${mac}`).join(", ") || "No learned entries"}`).join("\n");
-}
-
-function renderExam(exam) {
-  state.exam = exam;
-  const panel = document.querySelector("#exam-panel");
-  panel.hidden = false;
-  const question = exam.questions[state.examIndex];
-  document.querySelector("#exam-progress").textContent = `${state.examIndex + 1} / ${exam.question_count}`;
-  document.querySelector("#exam-prompt").textContent = question.prompt;
-  document.querySelector("#exam-answer").value = state.examAnswers[state.examIndex] || "";
-  document.querySelector("#exam-timer").textContent = `Started ${exam.started_at}. Hints are unavailable; submit every answer for the final review.`;
-  document.querySelector("#exam-result").textContent = "";
-  document.querySelector("#exam-next").textContent = state.examIndex + 1 === exam.question_count ? "Submit exam" : "Next question";
-  document.querySelector("#exam-answer").focus();
-}
-
-document.querySelector("#exam-start").addEventListener("click", async () => {
-  try { state.examIndex = 0; state.examAnswers = []; renderExam(await api("/api/exam", {method: "POST", body: "{}"})); }
-  catch (error) { document.querySelector("#exercise-result").textContent = error.message; }
-});
-
-document.querySelector("#exam-next").addEventListener("click", async () => {
-  if (!state.exam) return;
-  const answer = document.querySelector("#exam-answer").value.trim();
-  if (!answer) { document.querySelector("#exam-result").textContent = "Enter an answer before continuing."; return; }
-  state.examAnswers[state.examIndex] = answer;
-  if (state.examIndex + 1 < state.exam.question_count) { state.examIndex += 1; renderExam(state.exam); return; }
-  try {
-    const result = await api(`/api/exams/${state.exam.id}/submit`, {method: "POST", body: JSON.stringify({answers: state.examAnswers})});
-    const review = document.querySelector("#exam-result");
-    review.className = "exercise-result correct";
-    review.replaceChildren(document.createTextNode(`Score: ${result.score}/${result.total}. `));
-    if (!result.remediation.length) review.append("All covered topics passed.");
-    for (const item of result.remediation) {
-      const practice = document.createElement("button");
-      practice.type = "button";
-      practice.className = "secondary-button exam-review-action";
-      practice.textContent = `Practice ${item.topic_id} (${item.missed} missed)`;
-      practice.addEventListener("click", async () => renderExercise(await api(`/api/study-now?topic_id=${encodeURIComponent(item.topic_id)}&mode=${encodeURIComponent(item.mode)}`)));
-      review.append(practice);
-      if (item.lab_id) {
-        const lab = document.createElement("button");
-        lab.type = "button";
-        lab.className = "secondary-button exam-review-action";
-        lab.textContent = "Open supporting lab";
-        lab.addEventListener("click", () => startSession(item.lab_id));
-        review.append(lab);
-      }
-    }
-    document.querySelector("#exam-next").disabled = true;
-  } catch (error) { document.querySelector("#exam-result").className = "exercise-result incorrect"; document.querySelector("#exam-result").textContent = error.message; }
-});
-
-function renderProgress(progress) {
-  const mastery = document.querySelector("#mastery-summary");
-  mastery.hidden = !progress.skills.length;
-  mastery.replaceChildren(...progress.skills.slice(0, 4).map(skill => {
-    const item = document.createElement("p");
-    item.textContent = `${skill.topic_id} · ${skill.mode}: ${skill.mastery}% (${skill.attempts} attempts)`;
-    return item;
-  }));
-  const mistakes = document.querySelector("#mistake-review");
-  mistakes.hidden = !progress.recent_mistakes.length;
-  mistakes.replaceChildren(...progress.recent_mistakes.slice(0, 4).map(mistake => {
-    const item = document.createElement("p");
-    item.textContent = `${mistake.topic_id} · ${mistake.mode}: ${mistake.error_tags.join(", ")}`;
-    return item;
-  }));
-}
-
-function renderExercise(exercise) {
-  state.exercise = exercise;
-  state.hintsUsed = 0;
-  document.querySelector("#study-reason").textContent = exercise.reason;
-  document.querySelector("#exercise-mode").textContent = `${exercise.mode} · ${exercise.topic_id}`;
-  document.querySelector("#exercise-prompt").textContent = exercise.prompt;
-  const labButton = document.querySelector("#supporting-lab");
-  labButton.hidden = !exercise.lab_id;
-  labButton.dataset.labId = exercise.lab_id || "";
-  document.querySelector("#exercise-answer").value = "";
-  document.querySelector("#exercise-submit").disabled = false;
-  document.querySelector("#exercise-result").textContent = "";
-  const hints = document.querySelector("#exercise-hints");
-  hints.open = false;
-  document.querySelector("#exercise-hint-list").replaceChildren(...exercise.hints.map(hint => {
-    const item = document.createElement("li");
-    item.textContent = hint;
-    return item;
-  }));
-}
-
-async function selectCampusDevice(device) {
-  if (state.busy) return;
-  state.busy = true;
-  labSelect.disabled = true;
-  input.disabled = true;
-  try {
-    const result = await api(`/api/sessions/${state.sessionId}/campus`, {method: "POST", body: JSON.stringify({device})});
-    state.prompt = result.prompt;
-    promptLabel.textContent = result.prompt;
-    state.history = result.history;
-    state.historyIndex = state.history.length;
-    renderCampus(result.campus, result.active);
-    appendLine(`Console: ${result.active}`, "welcome");
-    input.disabled = result.closed;
-    input.focus({ preventScroll: true });
-  } catch (error) { appendLine(error.message, "error-line"); input.disabled = false; }
-  finally { state.busy = false; labSelect.disabled = false; }
-}
-
-document.querySelector("#ping-form").addEventListener("submit", async event => {
-  event.preventDefault();
-  if (state.busy) return;
-  state.busy = true;
-  labSelect.disabled = true;
-  try {
-    const result = await api(`/api/sessions/${state.sessionId}/campus`, {method: "POST", body: JSON.stringify({source: document.querySelector("#ping-source").value, destination: document.querySelector("#ping-destination").value})});
-    document.querySelector("#ping-result").textContent = result.output;
-    const timeline = document.querySelector("#ping-route-timeline");
-    timeline.hidden = !result.timeline;
-    if (result.timeline) timeline.replaceChildren(...result.timeline.flatMap(item => [Object.assign(document.createElement("p"), {textContent: item.direction}), ...item.routes.map(route => Object.assign(document.createElement("p"), {textContent: `↳ ${route.source} ${route.prefix} via ${route.via} · ${route.reason}`})), ...(item.failure ? [Object.assign(document.createElement("p"), {textContent: `↳ first blocker: ${item.failure}`})] : [])]));
-    renderCampus(result.campus, result.active);
-  } catch (error) { document.querySelector("#ping-result").textContent = error.message; }
-  finally { state.busy = false; labSelect.disabled = false; }
-});
-
-function initializeSections() {
-  const select = document.querySelector("#section-select");
-  select.replaceChildren(...state.sections.map(section => new Option(section.title, section.id)));
-  let saved;
-  try { saved = localStorage.getItem("arista-study-section"); } catch {}
-  if (state.sections.some(section => section.id === saved)) select.value = saved;
-  select.addEventListener("change", renderSection);
-  renderSection();
-}
-
-function renderSection() {
-  const id = document.querySelector("#section-select").value;
-  const section = state.sections.find(section => section.id === id);
-  if (!section) return;
-  try { localStorage.setItem("arista-study-section", id); } catch {}
-  document.querySelector("#study-title").textContent = section.title;
-  document.querySelector("#section-description").textContent = section.description;
-  document.querySelector("#section-topics").replaceChildren(...section.topics.map((topic, index) => {
+  const sections = state.studyModules.sections;
+  const interactive = allModules().filter(({ module }) => module.activities);
+  const completed = interactive.filter(({ module }) => moduleCompletion(module) === 100).length;
+  const progress = interactive.length ? Math.round(interactive.reduce((sum, { module }) => sum + moduleCompletion(module), 0) / interactive.length) : 0;
+  const next = interactive.find(({ module }) => moduleCompletion(module) < 100) || interactive[0];
+  document.querySelector("#readiness-ring").style.setProperty("--readiness", `${progress}%`);
+  document.querySelector("#readiness-value").textContent = `${progress}%`;
+  document.querySelector("#readiness-copy").textContent = interactive.length ? `${completed} of ${interactive.length} interactive modules complete. The remaining sections stay available as supplied reference material while their activities are built.` : "Your supplied curriculum is ready to browse.";
+  document.querySelector("#dashboard-reason").textContent = next ? `Continue ${next.module.number}. ${next.module.title}` : "Browse all five curriculum sections";
+  document.querySelector("#dashboard-study").onclick = () => next ? openModule(next.section, next.module) : showView("curriculum");
+  document.querySelector("#curriculum-cards").replaceChildren(...sections.map((section, index) => {
     const card = document.createElement("article");
-    card.className = "study-topic";
-    const title = document.createElement("h3");
-    title.textContent = (index + 1) + ". " + topic.title;
-    const description = document.createElement("p");
-    description.textContent = topic.description;
-    card.append(title, description);
-    for (const labId of topic.labs) {
-      const lab = state.labs.find(lab => lab.id === labId);
-      if (!lab) continue;
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "secondary-button study-launch";
-      button.textContent = lab.title + " · " + lab.estimated_minutes + " min";
-      button.addEventListener("click", async () => {
-        if (state.busy) return;
-        showView("lab");
-        await startSession(lab.id);
-        document.querySelector(".lab-card").scrollIntoView({behavior: "smooth", block: "start"});
-      });
-      card.append(button);
-    }
-    for (const checkpoint of topic.checkpoints || []) {
-      const details = document.createElement("details");
-      details.className = "study-checkpoint";
-      const summary = document.createElement("summary");
-      summary.textContent = checkpoint.question;
-      const answer = document.createElement("p");
-      answer.textContent = checkpoint.answer;
-      details.append(summary, answer);
-      card.append(details);
-    }
+    card.className = "curriculum-card";
+    const sectionInteractive = section.modules.filter((module) => module.activities);
+    const sectionComplete = section.modules.filter((module) => moduleCompletion(module) === 100).length;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Open section →";
+    button.addEventListener("click", () => openModule(section, section.modules[0]));
+    card.append(Object.assign(document.createElement("b"), { textContent: String(index + 1) }), Object.assign(document.createElement("h3"), { textContent: section.title }), Object.assign(document.createElement("p"), { textContent: `${section.modules.length} supplied lessons and labs` }), Object.assign(document.createElement("span"), { textContent: sectionInteractive.length ? `${sectionComplete} of ${sectionInteractive.length} interactive modules complete` : "Reference lessons ready" }), button);
     return card;
   }));
-  const sources = document.querySelector("#section-sources");
-  sources.replaceChildren(document.createTextNode("Reference reading: "));
-  for (const source of section.sources || []) {
-    const link = document.createElement("a");
-    link.textContent = source.title;
-    link.href = source.url;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    sources.append(link, document.createTextNode(" "));
-  }
-  sources.hidden = !section.sources?.length;
 }
 
-document.querySelectorAll(".nav-link").forEach(button => button.addEventListener("click", () => showView(button.dataset.view)));
-document.querySelector("#mobile-menu").addEventListener("click", event => { const sidebar = document.querySelector(".app-sidebar"); const open = sidebar.classList.toggle("is-open"); event.currentTarget.setAttribute("aria-expanded", String(open)); });
-document.querySelector("#dashboard-study").addEventListener("click", () => startGuidedStudy());
-document.querySelector("#curriculum-study").addEventListener("click", () => startGuidedStudy(state.selectedTopic));
-document.querySelector("#repeat-topic").addEventListener("click", async () => {
-  const topic = currentGuidedTopic();
-  if (!topic) return;
-  state.guidedAnswers = {};
-  state.guidedFeedback = null;
-  await startSession(topic.lab_id);
-  await api(`/api/sessions/${state.sessionId}/reset`, {method: "POST", body: "{}"});
-  await startSession(topic.lab_id);
-  renderGuidedStudy();
-});
-document.querySelectorAll("[data-action]").forEach(button => button.addEventListener("click", () => {
-  const action = button.dataset.action;
-  if (action === "study") startGuidedStudy();
-  else if (action === "practice" || action === "weak") startRecommendedPractice();
-  else if (action === "lab") showView("lab");
-  else if (action === "curriculum") showView("curriculum");
-  else if (action === "progress" || action === "recent") showView("progress");
-}));
-document.querySelector("#global-search").addEventListener("keydown", event => {
-  if (event.key !== "Enter") return;
-  const query = event.currentTarget.value.trim().toLowerCase();
-  if (!query) return;
-  if (state.reference?.categories.some(category => category.commands.some(command => `${command.command} ${command.description}`.toLowerCase().includes(query)))) {
-    showView("lab"); referenceDialog.showModal(); referenceSearch.value = query; renderReference(query); return;
+function renderSourceCurriculum() {
+  if (!state.studyModules) return;
+  const sections = state.studyModules.sections;
+  if (!state.selectedCurriculumSection || !sections.some((section) => section.id === state.selectedCurriculumSection)) state.selectedCurriculumSection = sections[0].id;
+  const section = sections.find((item) => item.id === state.selectedCurriculumSection);
+  if (!state.selectedModule || !section.modules.some((module) => module.id === state.selectedModule)) state.selectedModule = section.modules[0].id;
+  const selected = section.modules.find((module) => module.id === state.selectedModule);
+  document.querySelector("#curriculum-section-list").replaceChildren(...sections.map((item, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `curriculum-section-button ${item.id === section.id ? "is-selected" : ""}`;
+    button.append(Object.assign(document.createElement("b"), { textContent: index + 1 }), Object.assign(document.createElement("span"), { textContent: item.title }));
+    button.addEventListener("click", () => { state.selectedCurriculumSection = item.id; state.selectedModule = item.modules[0].id; state.curriculumSearch = ""; document.querySelector("#global-search").value = ""; renderSourceCurriculum(); });
+    return button;
+  }));
+  const completed = section.modules.filter((module) => moduleCompletion(module) === 100).length;
+  document.querySelector("#curriculum-section-summary").replaceChildren(Object.assign(document.createElement("p"), { className: "eyebrow", textContent: "Authoritative Drive curriculum" }), Object.assign(document.createElement("h2"), { textContent: section.title }), Object.assign(document.createElement("p"), { textContent: `${section.modules.length} lessons and labs · ${completed} complete. Choose any module; numeric order is recommended, not required.` }));
+  const card = document.createElement("article");
+  card.className = "domain-card module-index";
+  card.append(Object.assign(document.createElement("h3"), { textContent: state.curriculumSearch ? "Search results" : "Lessons and labs" }));
+  const normalizedSearch = state.curriculumSearch.trim().toLowerCase();
+  const visibleModules = normalizedSearch ? allModules().filter(({ module }) => `${module.title} ${module.markdown}`.toLowerCase().includes(normalizedSearch)) : section.modules.map((module) => ({ section, module }));
+  if (!visibleModules.length) card.append(Object.assign(document.createElement("p"), { className: "empty-state", textContent: "No curriculum modules match your search." }));
+  visibleModules.forEach(({ section: itemSection, module }) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `${module.id === selected.id ? "is-selected " : ""}${moduleCompletion(module) === 100 ? "is-complete" : ""}`;
+    button.textContent = `${moduleCompletion(module) === 100 ? "✓ " : ""}${normalizedSearch ? `${itemSection.title} · ` : ""}${module.number}. ${module.title}${module.kind === "lab" ? " · Lab" : ""}`;
+    button.addEventListener("click", () => openModule(itemSection, module));
+    card.append(button);
+  });
+  document.querySelector("#curriculum-domain-list").replaceChildren(card);
+  const detail = document.querySelector("#topic-detail");
+  const meter = document.createElement("div");
+  meter.className = "module-progress";
+  meter.append(Object.assign(document.createElement("span"), { style: `width:${moduleCompletion(selected)}%` }));
+  detail.replaceChildren(Object.assign(document.createElement("p"), { className: "eyebrow", textContent: `${section.title} · ${selected.kind}` }), Object.assign(document.createElement("h2"), { textContent: `${selected.number}. ${selected.title}` }), meter, Object.assign(document.createElement("p"), { className: "module-progress-label", textContent: selected.activities ? `${moduleCompletion(selected)}% complete across Learn, Flashcards, Quiz, Exercise, and Mastery` : "Supplied curriculum reference" }));
+  if (selected.activities) detail.append(renderInteractiveModule(selected, section));
+  else detail.append(renderMarkdownContent(selected.markdown), Object.assign(document.createElement("p"), { className: "planned", textContent: "This supplied lesson is ready for study. Its interactive activities will be added as this section is completed." }));
+}
+
+async function saveModuleProgress(module, progress, rerender = true) {
+  state.studyProgress[module.id] = progress;
+  if (rerender) { renderSourceCurriculum(); renderDashboard(); }
+  try { state.studyProgress[module.id] = await api("/api/study-progress", { method: "POST", body: JSON.stringify({ module_id: module.id, state: progress }) }); }
+  catch (error) { window.alert(`Progress was not saved: ${error.message}`); }
+}
+
+function renderInteractiveModule(module, section) {
+  const activities = module.activities;
+  const progress = moduleProgress(module);
+  const wrapper = document.createElement("div");
+  wrapper.className = "interactive-module";
+  const learn = activityPanel("Learn", "Read the supplied lesson before marking it reviewed.");
+  learn.append(renderMarkdownContent(activities.learn));
+  learn.append(actionButton(progress.learn_reviewed ? "✓ Learn reviewed" : "Mark Learn reviewed", () => { progress.learn_reviewed = !progress.learn_reviewed; saveModuleProgress(module, progress); }));
+  const flashcards = activityPanel("Flashcards", "Answers stay hidden until you reveal each card.");
+  activities.flashcards.forEach((card, index) => {
+    const revealed = progress.flashcards_revealed.includes(index);
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = `flashcard ${revealed ? "is-revealed" : ""}`;
+    item.append(Object.assign(document.createElement("strong"), { textContent: card.question }), Object.assign(document.createElement("span"), { textContent: revealed ? card.answer : "Reveal answer" }));
+    item.addEventListener("click", () => { if (!progress.flashcards_revealed.includes(index)) progress.flashcards_revealed.push(index); saveModuleProgress(module, progress); });
+    flashcards.append(item);
+  });
+  const quiz = activityPanel("Knowledge Quiz", "Answer from memory, compare with the lesson, then assess your response.");
+  activities.quiz.forEach((question, index) => {
+    const item = document.createElement("article");
+    item.className = `quiz-item ${progress.quiz_correct[index] ? "is-correct" : ""}`;
+    item.append(Object.assign(document.createElement("h4"), { textContent: `${index + 1}. ${question}` }));
+    const answer = document.createElement("textarea");
+    answer.rows = 3;
+    answer.value = progress.quiz_answers[index] || "";
+    answer.placeholder = "Write your answer before checking the source…";
+    const review = document.createElement("details");
+    review.className = "quiz-source-review";
+    review.append(Object.assign(document.createElement("summary"), { textContent: "Check against the Learn content" }), renderMarkdownContent(activities.learn));
+    const correct = actionButton("My answer is correct", () => { progress.quiz_answers[index] = answer.value; progress.quiz_correct[index] = true; saveModuleProgress(module, progress); });
+    correct.disabled = !answer.value.trim();
+    answer.addEventListener("input", () => { progress.quiz_answers[index] = answer.value; correct.disabled = !answer.value.trim(); });
+    answer.addEventListener("change", () => saveModuleProgress(module, progress, false));
+    const controls = document.createElement("div");
+    controls.className = "quiz-controls";
+    controls.append(correct, actionButton("Retry this question", () => { progress.quiz_correct[index] = false; saveModuleProgress(module, progress); }));
+    item.append(answer, review, controls);
+    quiz.append(item);
+  });
+  const practical = activityPanel("Practical Exercise", "Complete the supplied task and keep optional notes as evidence.");
+  practical.append(renderMarkdownContent(activities.practical));
+  const notes = document.createElement("textarea");
+  notes.rows = 4;
+  notes.placeholder = "Optional exercise notes…";
+  notes.value = progress.practical_notes;
+  notes.addEventListener("input", () => { progress.practical_notes = notes.value; });
+  notes.addEventListener("change", () => saveModuleProgress(module, progress, false));
+  const practicalLabel = document.createElement("label");
+  practicalLabel.className = "mastery-item";
+  const practicalCheck = document.createElement("input");
+  practicalCheck.type = "checkbox";
+  practicalCheck.checked = progress.practical_complete;
+  practicalCheck.addEventListener("change", () => { progress.practical_notes = notes.value; progress.practical_complete = practicalCheck.checked; saveModuleProgress(module, progress); });
+  practicalLabel.append(practicalCheck, document.createTextNode("I completed this practical exercise"));
+  practical.append(notes, practicalLabel);
+  const mastery = activityPanel("Mastery Check", "Check each outcome only when you can perform it without relying on the lesson.");
+  activities.mastery.forEach((text, index) => {
+    const label = document.createElement("label");
+    label.className = "mastery-item";
+    const check = document.createElement("input");
+    check.type = "checkbox";
+    check.checked = progress.mastery_checked.includes(index);
+    check.addEventListener("change", () => { progress.mastery_checked = check.checked ? [...new Set([...progress.mastery_checked, index])] : progress.mastery_checked.filter((item) => item !== index); saveModuleProgress(module, progress); });
+    label.append(check, document.createTextNode(text));
+    mastery.append(label);
+  });
+  const navigation = document.createElement("nav");
+  navigation.className = "module-navigation";
+  const index = section.modules.findIndex((item) => item.id === module.id);
+  if (index > 0) navigation.append(actionButton("← Previous module", () => openModule(section, section.modules[index - 1])));
+  if (index < section.modules.length - 1) navigation.append(actionButton("Next module →", () => openModule(section, section.modules[index + 1])));
+  wrapper.append(learn, flashcards, quiz, practical, mastery, navigation);
+  return wrapper;
+}
+
+function activityPanel(title, description) {
+  const panel = document.createElement("section");
+  panel.className = "module-activity";
+  panel.append(Object.assign(document.createElement("h3"), { textContent: title }), Object.assign(document.createElement("p"), { className: "activity-guide", textContent: description }));
+  return panel;
+}
+
+function actionButton(label, handler) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "secondary-button";
+  button.textContent = label;
+  button.addEventListener("click", handler);
+  return button;
+}
+
+function appendInlineMarkdown(element, value) {
+  const parts = value.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
+  for (const part of parts) {
+    if (part.startsWith("`") && part.endsWith("`")) element.append(Object.assign(document.createElement("code"), { textContent: part.slice(1, -1) }));
+    else if (part.startsWith("**") && part.endsWith("**")) element.append(Object.assign(document.createElement("strong"), { textContent: part.slice(2, -2) }));
+    else element.append(document.createTextNode(part));
   }
-  state.curriculumSearch = query;
-  const match = state.studyModules?.sections.flatMap(section => section.modules.map(module => ({section, module}))).find(item => `${item.module.title} ${item.module.markdown}`.toLowerCase().includes(query));
-  if (match) { state.selectedCurriculumSection = match.section.id; state.selectedModule = match.module.id; }
-  renderCurriculumWorkspace();
-  showView("curriculum");
+}
+
+function renderMarkdownContent(markdown) {
+  const content = document.createElement("div");
+  content.className = "module-markdown";
+  const lines = markdown.split("\n");
+  let list = null;
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (line.startsWith("```")) {
+      const language = line.slice(3);
+      const values = [];
+      while (++index < lines.length && !lines[index].startsWith("```")) values.push(lines[index]);
+      const pre = document.createElement("pre");
+      const code = document.createElement("code");
+      code.className = language ? `language-${language}` : "";
+      code.textContent = values.join("\n");
+      pre.append(code);
+      content.append(pre);
+      list = null;
+      continue;
+    }
+    if (line.startsWith("|") && lines[index + 1]?.match(/^\|[-:| ]+\|$/)) {
+      const table = document.createElement("table");
+      const header = document.createElement("tr");
+      line.split("|").slice(1, -1).forEach((value) => { const cell = document.createElement("th"); appendInlineMarkdown(cell, value.trim()); header.append(cell); });
+      const head = document.createElement("thead");
+      head.append(header);
+      table.append(head);
+      index += 1;
+      const body = document.createElement("tbody");
+      while (lines[index + 1]?.startsWith("|")) {
+        index += 1;
+        const row = document.createElement("tr");
+        lines[index].split("|").slice(1, -1).forEach((value) => { const cell = document.createElement("td"); appendInlineMarkdown(cell, value.trim()); row.append(cell); });
+        body.append(row);
+      }
+      table.append(body);
+      content.append(table);
+      list = null;
+      continue;
+    }
+    const heading = line.match(/^(#{1,3})\s+(.+)$/);
+    const item = line.match(/^[-*]\s+(.+)$/);
+    const ordered = line.match(/^\d+\.\s+(.+)$/);
+    if (heading) {
+      list = null;
+      const element = document.createElement(`h${Math.min(heading[1].length + 2, 5)}`);
+      appendInlineMarkdown(element, heading[2]);
+      content.append(element);
+    } else if (item || ordered) {
+      const tag = ordered ? "OL" : "UL";
+      if (!list || list.tagName !== tag) { list = document.createElement(tag.toLowerCase()); content.append(list); }
+      const entry = document.createElement("li");
+      appendInlineMarkdown(entry, (item || ordered)[1]);
+      list.append(entry);
+    } else if (line.trim()) {
+      list = null;
+      const paragraph = document.createElement("p");
+      appendInlineMarkdown(paragraph, line.trim());
+      content.append(paragraph);
+    }
+  }
+  return content;
+}
+
+document.querySelectorAll(".nav-link").forEach((button) => button.addEventListener("click", () => showView(button.dataset.view)));
+document.querySelectorAll("[data-action='curriculum']").forEach((button) => button.addEventListener("click", () => showView("curriculum")));
+document.querySelector("#curriculum-dashboard").addEventListener("click", () => showView("dashboard"));
+document.querySelector("#mobile-menu").addEventListener("click", (event) => { const sidebar = document.querySelector(".app-sidebar"); const open = sidebar.classList.toggle("is-open"); event.currentTarget.setAttribute("aria-expanded", String(open)); });
+document.querySelector("#global-search").addEventListener("input", (event) => {
+  state.curriculumSearch = event.currentTarget.value.trim();
+  if (state.curriculumSearch) { renderSourceCurriculum(); showView("curriculum"); }
+  else if (!document.querySelector("#curriculum-view").hidden) renderSourceCurriculum();
+});
+document.querySelector("#global-search").addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || !state.curriculumSearch) return;
+  const match = allModules().find(({ module }) => `${module.title} ${module.markdown}`.toLowerCase().includes(state.curriculumSearch.toLowerCase()));
+  if (match) openModule(match.section, match.module);
 });
 
 initialize();

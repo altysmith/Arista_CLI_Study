@@ -4,193 +4,67 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#091318">
-    <title>Arista CLI Practice Lab</title>
+    <title>Arista Network Foundations</title>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <div class="app-shell">
-    <aside class="app-sidebar" aria-label="Primary navigation">
-      <div class="brand"><strong>ARISTA</strong><span>NETWORK FOUNDATIONS</span></div><button id="mobile-menu" class="mobile-menu" type="button" aria-expanded="false" aria-controls="primary-navigation">Menu</button>
-      <nav id="primary-navigation" class="primary-nav">
-        <button class="nav-link is-active" type="button" data-view="dashboard">Dashboard</button>
-        <button class="nav-link" type="button" data-view="curriculum">Curriculum</button>
-        <button class="nav-link" type="button" data-view="study">Study</button>
-        <button class="nav-link" type="button" data-view="practice">Practice</button>
-        <button class="nav-link" type="button" data-view="lab">CLI Lab</button>
-        <button class="nav-link" type="button" data-view="troubleshoot">Troubleshooting</button>
-        <button class="nav-link" type="button" data-view="exam">Exam</button>
-        <button class="nav-link" type="button" data-view="progress">Progress</button>
-      </nav>
-      <div class="quick-links"><span>QUICK LINKS</span><button type="button" data-action="study">Study Now</button><button type="button" data-action="weak">Weak Areas</button><button type="button" data-action="recent">Recent Activity</button></div>
-      <div class="sidebar-footer"><p>Build. Configure. Verify. Troubleshoot.</p><small id="deployment-metadata">Loading release…</small></div>
-    </aside>
-    <div class="app-content">
-    <header class="app-header">
-      <div>
-        <p class="eyebrow">Network operations practice</p>
-        <h1>Arista Network Foundations</h1>
-        <p class="header-guide">Practical certification study, configuration, verification, and troubleshooting.</p>
-      </div>
-      <label class="global-search"><span>⌕</span><input id="global-search" type="search" placeholder="Search curriculum, commands, or labs…"></label>
-      <div class="connection" aria-live="polite">
-        <span class="connection-dot"></span>
-        <span id="connection-label">Starting simulator…</span>
-      </div>
-    </header>
-
-    <main id="dashboard-view" class="dashboard-view">
-      <section class="dashboard-hero"><div><p class="eyebrow">Arista Network Foundations</p><h1>Build real-world network skills.</h1><p>A practical, hands-on study environment for certification-ready network engineering.</p><button id="dashboard-study" class="study-now" type="button"><span>▶</span><strong>Study Now<small id="dashboard-reason">Loading your next recommendation…</small></strong><b>›</b></button></div><section class="readiness-card"><h2>Your readiness</h2><div class="readiness-content"><div id="readiness-ring" class="readiness-ring"><strong id="readiness-value">—</strong><span>assessed</span></div><p id="readiness-copy">Start a focused practice to establish your first mastery signal.</p></div></section></section>
-      <section class="dashboard-actions"><button type="button" data-action="practice"><b>⌘</b><span><strong>Quick Practice</strong><small>Target a focused skill</small></span><i>›</i></button><button type="button" data-action="lab"><b>›_</b><span><strong>CLI Lab</strong><small>Hands-on configuration</small></span><i>›</i></button></section>
-      <section class="dashboard-grid"><article class="dashboard-card skill-card"><div class="card-heading"><h2>Skill readiness</h2><button type="button" data-action="progress">View details →</button></div><div id="dimension-list" class="dimension-list"></div></article><article class="dashboard-card attention-card"><div class="card-heading"><h2>Needs attention</h2><button type="button" data-action="weak">View all →</button></div><div id="attention-list" class="attention-list"></div></article><article class="dashboard-card activity-card"><div class="card-heading"><h2>Recent activity</h2><button type="button" data-action="recent">View all →</button></div><div id="activity-list" class="activity-list"></div></article></section>
-      <section class="dashboard-card curriculum-overview"><div class="card-heading"><h2>Curriculum overview</h2><button type="button" data-action="curriculum">View curriculum →</button></div><div id="curriculum-cards" class="curriculum-cards"></div></section>
-    </main>
-    <main id="curriculum-view" class="curriculum-view" hidden>
-      <header class="curriculum-header"><div><p class="eyebrow">Certification learning path</p><h1>Study curriculum</h1><p>Choose any section, then open its supplied lesson or lab in numeric order.</p></div><button id="curriculum-study" class="secondary-button" type="button">Study recommended skill →</button></header>
-      <div class="curriculum-layout"><aside id="curriculum-section-list" class="curriculum-section-list" aria-label="Curriculum sections"></aside><section class="section-workspace"><div id="curriculum-section-summary" class="section-summary"></div><div id="curriculum-domain-list" class="curriculum-domain-list"></div><section id="topic-detail" class="topic-detail" aria-live="polite"></section></section></div>
-    </main>
-    <main id="study-view" class="guided-study-view" hidden>
-      <header class="guided-study-header"><div><p class="eyebrow">Guided study session</p><h1>Learn it. Recall it. Apply it.</h1><p>Each topic takes about ten minutes. Answer the recall checks and pass the required application lab to complete it.</p></div><button id="repeat-topic" class="secondary-button" type="button">Repeat topic</button></header>
-      <div class="guided-study-layout"><aside id="guided-topic-list" class="guided-topic-list" aria-label="Guided study topics"></aside><section id="guided-session" class="guided-session" aria-live="polite"></section></div>
-    </main>
-    <main id="lab-workspace" class="workspace" hidden>
-      <section id="campus-panel" class="campus-panel" aria-label="Campus topology" hidden>
-        <div class="section-heading"><h2 id="topology-title">College access network</h2><span id="topology-subtitle">Fictional campus · Layer 2</span></div>
-        <div class="topology">
-          <div id="topology-nodes" class="access-row"></div>
-          <div id="topology-links" class="uplinks"></div>
-          <div id="host-list" class="host-list"></div>
+      <aside class="app-sidebar" aria-label="Primary navigation">
+        <div class="brand"><strong>ARISTA</strong><span>NETWORK FOUNDATIONS</span></div>
+        <button id="mobile-menu" class="mobile-menu" type="button" aria-expanded="false" aria-controls="primary-navigation">Menu</button>
+        <nav id="primary-navigation" class="primary-nav">
+          <button class="nav-link is-active" type="button" data-view="dashboard">Dashboard</button>
+          <button class="nav-link" type="button" data-view="curriculum">Curriculum</button>
+        </nav>
+        <div class="sidebar-footer">
+          <p>Learn. Recall. Apply. Master.</p>
+          <small id="deployment-metadata">Loading release…</small>
         </div>
-        <section id="routing-evidence" class="routing-evidence" aria-label="Live routing evidence" hidden>
-          <h3>Live routing evidence</h3>
-          <div id="routing-evidence-cards" class="routing-evidence-cards"></div>
-        </section>
-        <form id="ping-form" class="ping-controls">
-          <label>From <select id="ping-source" aria-label="Source host"></select></label>
-          <label>To <select id="ping-destination" aria-label="Destination host"></select></label>
-          <button class="secondary-button" type="submit">Ping host</button>
-        </form>
-        <p id="ping-result" role="status">Test a host pair, then inspect the relevant switch or router evidence.</p>
-        <div id="ping-route-timeline" class="ping-route-timeline" hidden></div>
-        <details><summary>Host ARP tables and simulation limits</summary><pre id="host-arp">No learned entries.</pre>
-          <p id="topology-limits">Same-subnet traffic on this fixed, loop-free topology is simulated. Routing, STP convergence, LACP, MLAG, ACL enforcement, and traffic timing are not modeled. Learning tables clear on configuration changes and server restart. Switch ARP stays empty because no Layer 3 interface participates.</p>
-        </details>
-      </section>
-      <section class="terminal-card" aria-label="EOS terminal">
-        <div class="terminal-toolbar">
-          <div class="terminal-title">
-            <span class="device-icon">SW</span>
-            <div>
-              <strong id="device-title">Training switch</strong>
-              <span>2. Run EOS commands here</span>
-            </div>
-          </div>
-          <div class="terminal-actions">
-            <button id="reference-open" class="reference-button" type="button" aria-haspopup="dialog">Command reference</button>
-            <button id="clear-terminal" class="quiet-button" type="button">Clear screen</button>
-          </div>
-        </div>
-        <div id="terminal-output" class="terminal-output" role="log" aria-live="polite" aria-label="Terminal output"></div>
-        <form id="terminal-form" class="terminal-input-row" autocomplete="off">
-          <label id="prompt" for="command-input">switch&gt;</label>
-          <input id="command-input" name="command" type="text" spellcheck="false" autocapitalize="none" aria-label="EOS command">
-        </form>
-      </section>
-
-      <aside class="lab-card" aria-label="Lab instructions">
-        <label class="lab-picker-label" for="lab-select">1. Choose a practice lab</label>
-        <select id="lab-select" class="lab-select" aria-label="Select a practice lab"></select>
-        <div class="lab-heading">
-          <span id="lab-difficulty" class="badge">Foundation</span>
-          <span id="lab-time" class="lab-time">8 min</span>
-        </div>
-        <h2 id="lab-title">Access VLAN Fundamentals</h2>
-        <p id="lab-brief" class="lab-brief"></p>
-
-        <div class="section-heading">
-          <h3>Objectives</h3>
-          <span id="progress-label">0 / 0</span>
-        </div>
-        <ol id="objectives" class="objective-list"></ol>
-
-          <div id="grade-panel" class="grade-panel" hidden>
-          <h3 id="grade-title">Progress check</h3>
-          <p id="grade-summary" class="grade-summary" hidden></p>
-            <ul id="grade-results"></ul>
-            <section id="troubleshooting-review" class="troubleshooting-review" hidden></section>
-        </div>
-
-        <details class="hints">
-          <summary>Need a hint?</summary>
-          <ul id="hints-list"></ul>
-        </details>
-
-        <div class="lab-actions">
-          <button id="check-work" class="primary-button" type="button">3. Check my work</button>
-          <button id="reset-lab" class="secondary-button" type="button">Reset lab</button>
-        </div>
-        <p class="keyboard-help">Enter runs a command · ↑ and ↓ recall commands · Ctrl+L clears the screen</p>
-        <p id="save-status" class="keyboard-help" role="status"></p>
       </aside>
-
-      <details class="study-session" aria-labelledby="study-now-title">
-        <summary><span id="study-now-title">Quick review</span><span>Optional question practice and exam</span></summary>
-        <div class="study-session-content">
-          <div class="section-heading"><h2>Quick review</h2><span id="study-reason"></span></div>
-          <form id="practice-picker" class="practice-picker"><label for="practice-choice">Practice a specific skill</label><select id="practice-choice"></select><button class="secondary-button" type="submit">Load practice</button></form>
-          <p id="exercise-mode" class="exercise-meta"></p>
-          <p id="exercise-prompt" class="exercise-prompt">Loading a focused practice question…</p>
-          <button id="supporting-lab" class="secondary-button" type="button" hidden>Open supporting lab</button>
-          <form id="exercise-form" class="exercise-form">
-            <label for="exercise-answer">Your answer</label>
-            <input id="exercise-answer" type="text" autocomplete="off" required>
-            <button id="exercise-submit" class="primary-button" type="submit">Check answer</button>
-          </form>
-          <details id="exercise-hints" class="hints"><summary>Need a hint?</summary><ol id="exercise-hint-list"></ol></details>
-          <p id="exercise-result" class="exercise-result" role="status"></p>
-          <div id="mastery-summary" class="mastery-summary" hidden></div>
-          <div id="mistake-review" class="mistake-review" hidden></div>
-          <div class="exam-launch"><button id="exam-start" class="secondary-button" type="button">Start integrated exam</button><span>8 varied questions · no hints · saved until submitted</span></div>
-          <section id="exam-panel" class="exam-panel" hidden aria-labelledby="exam-title">
-            <div class="section-heading"><h3 id="exam-title">Integrated readiness exam</h3><span id="exam-progress"></span></div>
-            <p id="exam-timer" class="exercise-meta"></p>
-            <p id="exam-prompt" class="exercise-prompt"></p>
-            <label for="exam-answer">Your answer</label><input id="exam-answer" type="text" autocomplete="off">
-            <button id="exam-next" class="primary-button" type="button">Next question</button>
-            <div id="exam-result" class="exercise-result" role="status"></div>
+      <div class="app-content">
+        <header class="app-header">
+          <div>
+            <p class="eyebrow">Structured network engineering study</p>
+            <h1>Arista Network Foundations</h1>
+            <p class="header-guide">Your complete curriculum, organized from fundamentals through EOS.</p>
+          </div>
+          <label class="global-search"><span aria-hidden="true">⌕</span><input id="global-search" type="search" placeholder="Search the curriculum…"></label>
+          <div class="connection" aria-live="polite"><span class="connection-dot"></span><span id="connection-label">Loading curriculum…</span></div>
+        </header>
+        <main id="dashboard-view" class="dashboard-view">
+          <section class="dashboard-hero">
+            <div>
+              <p class="eyebrow">Arista Network Foundations</p>
+              <h1>Build real-world network skills.</h1>
+              <p>Work through the complete curriculum in the order that helps you most. Your progress is saved as you learn.</p>
+              <button id="dashboard-study" class="study-now" type="button"><span aria-hidden="true">▶</span><strong>Open Curriculum<small id="dashboard-reason">Continue your next unfinished module</small></strong><b aria-hidden="true">›</b></button>
+            </div>
+            <section class="readiness-card">
+              <h2>Your curriculum progress</h2>
+              <div class="readiness-content"><div id="readiness-ring" class="readiness-ring"><strong id="readiness-value">—</strong><span>complete</span></div><p id="readiness-copy">Loading your saved curriculum progress…</p></div>
+            </section>
           </section>
-        </div>
-      </details>
-
-      <details class="study-browser" aria-labelledby="study-title">
-        <summary><span>Browse learning plan</span><span>Optional section notes, refreshers, and source links</span></summary>
-        <div class="study-browser-content">
-          <label class="lab-picker-label" for="section-select">Study section</label>
-          <select id="section-select" class="lab-select"></select>
-          <h2 id="study-title">Network Admin Prep</h2>
-          <p id="section-description"></p>
-          <div id="section-topics" class="study-topics"></div>
-          <p id="section-sources" class="study-sources"></p>
-          <p class="study-note">Use this area when you want to switch topics or refresh a concept. It is separate from the active lab above.</p>
-        </div>
-      </details>
-    </main>
-
-    <dialog id="command-reference" class="reference-dialog" aria-labelledby="reference-title">
-      <div class="reference-header">
-        <div>
-          <p class="eyebrow">Quick reference</p>
-          <h2 id="reference-title">EOS commands</h2>
-        </div>
-        <button id="reference-close" class="dialog-close" type="button" aria-label="Close command reference">×</button>
+          <section class="dashboard-card curriculum-overview">
+            <div class="card-heading"><h2>Curriculum sections</h2><button type="button" data-action="curriculum">View curriculum →</button></div>
+            <div id="curriculum-cards" class="curriculum-cards"></div>
+          </section>
+        </main>
+        <main id="curriculum-view" class="curriculum-view" hidden>
+          <header class="curriculum-header">
+            <div><p class="eyebrow">Complete learning path</p><h1>Study curriculum</h1><p>Choose any of the five sections, then open a supplied lesson or lab. Numeric order is recommended, not required.</p></div>
+            <button id="curriculum-dashboard" class="secondary-button" type="button">← Back to dashboard</button>
+          </header>
+          <div class="curriculum-layout">
+            <aside id="curriculum-section-list" class="curriculum-section-list" aria-label="Curriculum sections"></aside>
+            <section class="section-workspace">
+              <div id="curriculum-section-summary" class="section-summary"></div>
+              <div id="curriculum-domain-list" class="curriculum-domain-list"></div>
+              <section id="topic-detail" class="topic-detail" aria-live="polite"></section>
+            </section>
+          </div>
+        </main>
       </div>
-      <label class="reference-search-label" for="reference-search">Search commands and descriptions</label>
-      <input id="reference-search" class="reference-search" type="search" placeholder="Try trunk, VLAN, route, or MLAG">
-      <p class="reference-instruction">Select a command to place it at the terminal prompt. Replace values shown in angle brackets before running it.</p>
-      <div id="reference-groups" class="reference-groups"></div>
-      <p id="reference-empty" class="reference-empty" hidden>No matching commands found.</p>
-    </dialog>
-
+    </div>
     <script src="app.js" defer></script>
-    </div></div>
   </body>
 </html>
