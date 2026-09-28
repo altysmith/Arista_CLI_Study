@@ -51,6 +51,8 @@ class WebTests(unittest.TestCase):
         self.assertIn(b"Arista Network Foundations", body)
         self.assertIn(b"Dashboard", body)
         self.assertIn(b"Study curriculum", body)
+        self.assertIn(b"app.js?v=dashboard-curriculum-2", body)
+        self.assertIn(b"styles.css?v=dashboard-curriculum-2", body)
         self.assertNotIn(b"CLI Lab", body)
         self.assertNotIn(b"Troubleshooting", body)
         self.assertNotIn(b"Exam", body)
