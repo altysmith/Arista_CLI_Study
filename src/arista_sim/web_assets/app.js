@@ -71,6 +71,7 @@ function openModule(section, module) {
   document.querySelector("#global-search").value = "";
   renderSourceCurriculum();
   showView("curriculum");
+  document.querySelector("#topic-detail").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderDashboard() {
